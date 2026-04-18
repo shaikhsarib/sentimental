@@ -1,0 +1,19 @@
+{
+  "project_id": "f39317cc-4eee-42cb-943b-e15e5c77d154",
+  "name": "Sentimental Op",
+  "description": "",
+  "created_at": 1776324126,
+  "documents": [
+    {
+      "doc_id": "4795d877-7d12-470e-afab-f44757d0c1d0",
+      "title": "MISSION_SEED",
+      "content_type": "text",
+      "created_at": 1776346115
+    }
+  ],
+  "latest_run_id": null,
+  "ontology": {
+    "error": "Client error '400 Bad Request' for url 'https://api.groq.com/openai/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400",
+    "triggered": false
+  }
+}

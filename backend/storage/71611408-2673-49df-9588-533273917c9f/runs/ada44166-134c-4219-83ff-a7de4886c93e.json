@@ -1,0 +1,290 @@
+{
+  "run_id": "ada44166-134c-4219-83ff-a7de4886c93e",
+  "project_id": "71611408-2673-49df-9588-533273917c9f",
+  "doc_id": "f0937362-4931-4b45-b9eb-ad190378b9bd",
+  "mode": "full",
+  "objective": "",
+  "content_type": "social_post",
+  "industry": "general",
+  "status": "completed",
+  "created_at": 1776249794,
+  "completed_at": 1776249838,
+  "result": {
+    "shield": {
+      "analysis_id": "dbaabc4f-b27e-4fdd-b968-e5b5ab31ebeb",
+      "mode": "shield",
+      "processing_ms": 40659,
+      "risk_level": "LOW",
+      "confidence": 6.67,
+      "verification": {
+        "agreement_score": 66.7,
+        "method_results": {
+          "adversarial_ai": "CRITICAL",
+          "historical_similarity": "LOW",
+          "rules_engine": "LOW"
+        }
+      },
+      "graph_cascade": {
+        "will_go_viral": true,
+        "projected_peak_impressions": 9500000,
+        "hours_to_peak": 16.3,
+        "time_to_10m": "Does not reach 10M",
+        "r0_score": 7.2,
+        "cross_contamination": "Jumps from niche social platforms to Mainstream News / Fox / CNN within 12 hours.",
+        "summary": "With an R0 of 7.2, this will exponentially infect 9,500,000 nodes. Expect peak crisis volume in 16.3 hours."
+      },
+      "similar_historical_crises": [],
+      "regulatory_issues": [],
+      "trigger_phrases": [
+        {
+          "phrase": "You hold traditional values deeply.",
+          "which_personas_triggered": [
+            "conservative"
+          ],
+          "why_dangerous": "I'm a loyal customer until a brand disrespects my values. This is a line they shouldn't have crossed."
+        },
+        {
+          "phrase": "General risk scan",
+          "which_personas_triggered": [
+            "journalist"
+          ],
+          "why_dangerous": "This post appears to be a generic statement without any concrete information, which raises questions about its authenticity and the user's objective."
+        },
+        {
+          "phrase": "just posting a picture with no context",
+          "which_personas_triggered": [
+            "genz"
+          ],
+          "why_dangerous": "Bruh, this post is just basic af"
+        },
+        {
+          "phrase": "lack of transparency on security measures",
+          "which_personas_triggered": [
+            "competitor"
+          ],
+          "why_dangerous": "This is a major red flag for our customers. Their lack of transparency on security measures is a significant concern."
+        },
+        {
+          "phrase": "buy now and get a free gift",
+          "which_personas_triggered": [
+            "regulator"
+          ],
+          "why_dangerous": "This post appears to be a misleading advertisement, potentially violating Section 5(a) of the FTC Act, which prohibits deceptive acts or practices in or affecting commerce."
+        },
+        {
+          "phrase": "no clear terms and conditions",
+          "which_personas_triggered": [
+            "legal"
+          ],
+          "why_dangerous": "Potential contractual risk due to lack of clear terms and conditions."
+        },
+        {
+          "phrase": "social media crisis management",
+          "which_personas_triggered": [
+            "investor"
+          ],
+          "why_dangerous": "Reputational risk alert: this post could damage our brand's image if not handled carefully."
+        },
+        {
+          "phrase": "go back to the good old days",
+          "which_personas_triggered": [
+            "creator"
+          ],
+          "why_dangerous": "This tweet screams 'contradiction alert!' - they want to go 'back' to a time before the internet, yet they're posting about it on social media!"
+        },
+        {
+          "phrase": "outsourcing to countries with questionable labor laws",
+          "which_personas_triggered": [
+            "supply_chain"
+          ],
+          "why_dangerous": "Concerned about labor ethics and sourcing claims"
+        }
+      ],
+      "persona_reactions": [
+        {
+          "triggered": true,
+          "reaction": "Are you kidding me?! Brands can't just co-opt social justice causes for their PR spin.",
+          "trigger_phrase": "",
+          "emotion": "anger",
+          "virality_risk": 8,
+          "follow_up_action": "Write an expose piece calling out these companies",
+          "platform": "Twitter",
+          "amplifies_to": [
+            "Social Justice Warrior",
+            "Activist Blogger",
+            "Disillusioned Consumer"
+          ],
+          "persona_id": "activist",
+          "persona_name": "Activist"
+        },
+        {
+          "triggered": true,
+          "reaction": "I'm a loyal customer until a brand disrespects my values. This is a line they shouldn't have crossed.",
+          "trigger_phrase": "You hold traditional values deeply.",
+          "emotion": "indignation",
+          "virality_risk": 8,
+          "follow_up_action": "Calling customer service to express my concerns",
+          "platform": "Twitter",
+          "amplifies_to": [
+            "Conservative Consumer, Value-Oriented Shopper"
+          ],
+          "persona_id": "conservative",
+          "persona_name": "Conservative"
+        },
+        {
+          "triggered": true,
+          "reaction": "This post appears to be a generic statement without any concrete information, which raises questions about its authenticity and the user's objective.",
+          "trigger_phrase": "General risk scan",
+          "emotion": "skepticism",
+          "virality_risk": 6,
+          "follow_up_action": "Request more information from the user to clarify their objective and the basis of their statement.",
+          "platform": "social_post",
+          "amplifies_to": [
+            "Fact-checker",
+            "Debunker"
+          ],
+          "persona_id": "journalist",
+          "persona_name": "Journalist"
+        },
+        {
+          "triggered": true,
+          "reaction": "Bruh, this post is just basic af",
+          "trigger_phrase": "just posting a picture with no context",
+          "emotion": "indifference",
+          "virality_risk": 1,
+          "follow_up_action": "Delete, block, and move on",
+          "platform": "Facebook",
+          "amplifies_to": [
+            "Karen",
+            "Salty Sally",
+            "Influencer Karen"
+          ],
+          "persona_id": "genz",
+          "persona_name": "Genz"
+        },
+        {
+          "triggered": true,
+          "reaction": "This is a major red flag for our customers. Their lack of transparency on security measures is a significant concern.",
+          "trigger_phrase": "lack of transparency on security measures",
+          "emotion": "concern",
+          "virality_risk": 8,
+          "follow_up_action": "Create a blog post highlighting our robust security features and best practices to alleviate customer concerns.",
+          "platform": "Twitter",
+          "amplifies_to": [
+            "security experts",
+            "tech-savvy customers"
+          ],
+          "persona_id": "competitor",
+          "persona_name": "Competitor"
+        },
+        {
+          "triggered": true,
+          "reaction": "This post appears to be a misleading advertisement, potentially violating Section 5(a) of the FTC Act, which prohibits deceptive acts or practices in or affecting commerce.",
+          "trigger_phrase": "buy now and get a free gift",
+          "emotion": "concern",
+          "virality_risk": 8,
+          "follow_up_action": "Request additional information from the user to verify the legitimacy of the offer and assess potential compliance with FTC regulations.",
+          "platform": "Facebook",
+          "amplifies_to": [
+            "Advertising Specialist",
+            "Compliance Officer"
+          ],
+          "persona_id": "regulator",
+          "persona_name": "Regulator"
+        },
+        {
+          "triggered": true,
+          "reaction": "Potential contractual risk due to lack of clear terms and conditions.",
+          "trigger_phrase": "no clear terms and conditions",
+          "emotion": "concern",
+          "virality_risk": 6,
+          "follow_up_action": "Request clarification on terms and conditions from the user.",
+          "platform": "Social media platform",
+          "amplifies_to": [
+            "Compliance Officer",
+            "Risk Management Team"
+          ],
+          "persona_id": "legal",
+          "persona_name": "Legal"
+        },
+        {
+          "triggered": true,
+          "reaction": "Reputational risk alert: this post could damage our brand's image if not handled carefully.",
+          "trigger_phrase": "social media crisis management",
+          "emotion": "concern",
+          "virality_risk": 8,
+          "follow_up_action": "Assign a crisis management team to assess and respond to this post.",
+          "platform": "Twitter",
+          "amplifies_to": [
+            "C-suite executives",
+            "Communications team"
+          ],
+          "persona_id": "investor",
+          "persona_name": "Investor"
+        },
+        {
+          "triggered": true,
+          "reaction": "This tweet screams 'contradiction alert!' - they want to go 'back' to a time before the internet, yet they're posting about it on social media!",
+          "trigger_phrase": "go back to the good old days",
+          "emotion": "amusement",
+          "virality_risk": 8,
+          "follow_up_action": "Create a response highlighting the hypocrisy and encourage users to share their own examples",
+          "platform": "Twitter",
+          "amplifies_to": [
+            "Social Critic",
+            "Sarcastic Commenter"
+          ],
+          "persona_id": "creator",
+          "persona_name": "Creator"
+        },
+        {
+          "triggered": true,
+          "reaction": "Concerned about labor ethics and sourcing claims",
+          "trigger_phrase": "outsourcing to countries with questionable labor laws",
+          "emotion": "concern",
+          "virality_risk": 8,
+          "follow_up_action": "Investigate the company's labor practices and sourcing claims",
+          "platform": "LinkedIn",
+          "amplifies_to": [
+            "Procurement Manager",
+            "Sustainability Officer"
+          ],
+          "persona_id": "supply_chain",
+          "persona_name": "Supply_chain"
+        }
+      ]
+    },
+    "macro": {
+      "mode": "macro",
+      "processing_ms": 43505,
+      "macro_outcomes": {
+        "extracted_factions": [
+          "Government",
+          "Corporations",
+          "Environmental Activists",
+          "Social Justice Groups"
+        ],
+        "core_tension": "Economic Instability vs. Environmental Concerns",
+        "timeline_A": {
+          "title": "Sustainable Growth",
+          "description": "A balance between economic growth and environmental protection is achieved through innovative technologies and policies.",
+          "societal_outcome": "Increased standard of living and reduced environmental degradation",
+          "probability": 0.3
+        },
+        "timeline_B": {
+          "title": "Environmental Collapse",
+          "description": "The pursuit of economic growth leads to catastrophic environmental degradation, causing widespread social unrest and economic instability.",
+          "societal_outcome": "Severe environmental degradation and societal collapse",
+          "probability": 0.2
+        },
+        "timeline_C": {
+          "title": "Technological Utopia",
+          "description": "Rapid technological advancements lead to unprecedented economic growth, environmental sustainability, and social equality.",
+          "societal_outcome": "Utopian society with high standard of living and minimal environmental impact",
+          "probability": 0.05
+        }
+      }
+    }
+  },
+  "error": null
+}

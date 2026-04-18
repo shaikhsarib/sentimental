@@ -1,0 +1,273 @@
+{
+  "run_id": "9648a0e0-5c7b-4e0a-b84e-3b8f2178fb9f",
+  "project_id": "71611408-2673-49df-9588-533273917c9f",
+  "doc_id": "f0937362-4931-4b45-b9eb-ad190378b9bd",
+  "mode": "full",
+  "objective": "",
+  "content_type": "social_post",
+  "industry": "general",
+  "status": "completed",
+  "created_at": 1776249819,
+  "completed_at": 1776249838,
+  "result": {
+    "shield": {
+      "analysis_id": "5a9e4599-435f-4732-80bf-01ebfd690445",
+      "mode": "shield",
+      "processing_ms": 16037,
+      "risk_level": "LOW",
+      "confidence": 6.67,
+      "verification": {
+        "agreement_score": 66.7,
+        "method_results": {
+          "adversarial_ai": "CRITICAL",
+          "historical_similarity": "LOW",
+          "rules_engine": "LOW"
+        }
+      },
+      "graph_cascade": {
+        "will_go_viral": true,
+        "projected_peak_impressions": 9500000,
+        "hours_to_peak": 15.1,
+        "time_to_10m": "Does not reach 10M",
+        "r0_score": 8.4,
+        "cross_contamination": "Jumps from niche social platforms to Mainstream News / Fox / CNN within 12 hours.",
+        "summary": "With an R0 of 8.4, this will exponentially infect 9,500,000 nodes. Expect peak crisis volume in 15.1 hours."
+      },
+      "similar_historical_crises": [],
+      "regulatory_issues": [],
+      "trigger_phrases": [
+        {
+          "phrase": "partnering with a social justice cause",
+          "which_personas_triggered": [
+            "activist"
+          ],
+          "why_dangerous": "Ugh, another brand 'partnering' with a social justice cause without doing ANY real work or donating a single penny. Just here for the PR."
+        },
+        {
+          "phrase": "You hold traditional values deeply. You believe corporations should sell products, not push ideologies.",
+          "which_personas_triggered": [
+            "conservative"
+          ],
+          "why_dangerous": "Corporations should stick to what they're good at: making great products, not trying to sway our values!"
+        },
+        {
+          "phrase": "General risk scan",
+          "which_personas_triggered": [
+            "journalist"
+          ],
+          "why_dangerous": "This post appears to be a thinly veiled promotion for a new product, but the user claims it's a general risk scan. I'm skeptical of their motives."
+        },
+        {
+          "phrase": "disrupting the paradigm",
+          "which_personas_triggered": [
+            "genz"
+          ],
+          "why_dangerous": " Corporate cringe alert: they think they're 'disrupting the paradigm' but it's just a rebrand of the same old boring stuff :/"
+        },
+        {
+          "phrase": "outdated solutions that aren't secure",
+          "which_personas_triggered": [
+            "competitor"
+          ],
+          "why_dangerous": "This is a major red flag for our customers - they're still using outdated solutions that aren't secure. We can offer a more robust and modern alternative."
+        },
+        {
+          "phrase": "buy now and get a free gift",
+          "which_personas_triggered": [
+            "regulator"
+          ],
+          "why_dangerous": "This post appears to be a misleading advertisement, potentially violating Section 5(a) of the FTC Act, which prohibits deceptive acts or practices in or affecting commerce."
+        },
+        {
+          "phrase": "no clear terms and conditions",
+          "which_personas_triggered": [
+            "legal"
+          ],
+          "why_dangerous": "Potential contractual risk due to lack of clear terms and conditions."
+        },
+        {
+          "phrase": "I'm so done with the double standards of social justice warriors.",
+          "which_personas_triggered": [
+            "creator"
+          ],
+          "why_dangerous": "Savage! Love how they're calling out the hypocrisy of cancel culture. But, let's not forget, we're just as guilty for calling out their actions."
+        },
+        {
+          "phrase": "outsourcing to low-cost countries",
+          "which_personas_triggered": [
+            "supply_chain"
+          ],
+          "why_dangerous": "This post raises red flags regarding labor ethics and sourcing claims. We need to verify the authenticity of these claims before making any business decisions."
+        }
+      ],
+      "persona_reactions": [
+        {
+          "triggered": true,
+          "reaction": "Ugh, another brand 'partnering' with a social justice cause without doing ANY real work or donating a single penny. Just here for the PR.",
+          "trigger_phrase": "partnering with a social justice cause",
+          "emotion": "anger",
+          "virality_risk": 8,
+          "follow_up_action": "Calling out this brand on my next live stream. Time to hold them accountable.",
+          "platform": "Twitter",
+          "amplifies_to": [
+            "influencer_activist",
+            "social_justice_critiques"
+          ],
+          "persona_id": "activist",
+          "persona_name": "Activist"
+        },
+        {
+          "triggered": true,
+          "reaction": "Corporations should stick to what they're good at: making great products, not trying to sway our values!",
+          "trigger_phrase": "You hold traditional values deeply. You believe corporations should sell products, not push ideologies.",
+          "emotion": "anger",
+          "virality_risk": 9,
+          "follow_up_action": "Sharing this content on LinkedIn to raise awareness about the importance of brand neutrality",
+          "platform": "Twitter",
+          "amplifies_to": [
+            "Conservative Consumer, Traditionalist"
+          ],
+          "persona_id": "conservative",
+          "persona_name": "Conservative"
+        },
+        {
+          "triggered": true,
+          "reaction": "This post appears to be a thinly veiled promotion for a new product, but the user claims it's a general risk scan. I'm skeptical of their motives.",
+          "trigger_phrase": "General risk scan",
+          "emotion": "suspicion",
+          "virality_risk": 8,
+          "follow_up_action": "Dig deeper into the user's history to see if they've made similar claims before, and investigate the product being promoted.",
+          "platform": "Social media",
+          "amplifies_to": [
+            "Fact-checker",
+            "Product reviewer",
+            "Investigative journalist"
+          ],
+          "persona_id": "journalist",
+          "persona_name": "Journalist"
+        },
+        {
+          "triggered": true,
+          "reaction": " Corporate cringe alert: they think they're 'disrupting the paradigm' but it's just a rebrand of the same old boring stuff :/",
+          "trigger_phrase": "disrupting the paradigm",
+          "emotion": "exasperation",
+          "virality_risk": 8,
+          "follow_up_action": "calling out the fake innovators on my next podcast",
+          "platform": "Twitter",
+          "amplifies_to": [
+            "conspiracy theorists",
+            "tech industry critics"
+          ],
+          "persona_id": "genz",
+          "persona_name": "Genz"
+        },
+        {
+          "triggered": true,
+          "reaction": "This is a major red flag for our customers - they're still using outdated solutions that aren't secure. We can offer a more robust and modern alternative.",
+          "trigger_phrase": "outdated solutions that aren't secure",
+          "emotion": "concern",
+          "virality_risk": 8,
+          "follow_up_action": "Reach out to the user and offer a free security assessment to identify vulnerabilities in their current setup.",
+          "platform": "LinkedIn",
+          "amplifies_to": [
+            "Security Experts",
+            "IT Decision Makers"
+          ],
+          "persona_id": "competitor",
+          "persona_name": "Competitor"
+        },
+        {
+          "triggered": true,
+          "reaction": "This post appears to be a misleading advertisement, potentially violating Section 5(a) of the FTC Act, which prohibits deceptive acts or practices in or affecting commerce.",
+          "trigger_phrase": "buy now and get a free gift",
+          "emotion": "concern",
+          "virality_risk": 8,
+          "follow_up_action": "Flag the post for review and potentially report it to the FTC",
+          "platform": "Facebook",
+          "amplifies_to": [
+            "Social Media Influencer",
+            "Online Reviewer"
+          ],
+          "persona_id": "regulator",
+          "persona_name": "Regulator"
+        },
+        {
+          "triggered": true,
+          "reaction": "Potential contractual risk due to lack of clear terms and conditions.",
+          "trigger_phrase": "no clear terms and conditions",
+          "emotion": "concern",
+          "virality_risk": 8,
+          "follow_up_action": "Request clarification on terms and conditions or advise against posting.",
+          "platform": "social media",
+          "amplifies_to": [
+            "Compliance Officer",
+            "Risk Management Team"
+          ],
+          "persona_id": "legal",
+          "persona_name": "Legal"
+        },
+        {
+          "triggered": true,
+          "reaction": "Savage! Love how they're calling out the hypocrisy of cancel culture. But, let's not forget, we're just as guilty for calling out their actions.",
+          "trigger_phrase": "I'm so done with the double standards of social justice warriors.",
+          "emotion": "anger",
+          "virality_risk": 8,
+          "follow_up_action": "Create a poll asking people if they agree with the statement and see how the results play out.",
+          "platform": "TikTok",
+          "amplifies_to": [
+            "influencer, contrarian, troll"
+          ],
+          "persona_id": "creator",
+          "persona_name": "Creator"
+        },
+        {
+          "triggered": true,
+          "reaction": "This post raises red flags regarding labor ethics and sourcing claims. We need to verify the authenticity of these claims before making any business decisions.",
+          "trigger_phrase": "outsourcing to low-cost countries",
+          "emotion": "concern",
+          "virality_risk": 8,
+          "follow_up_action": "Reach out to the supplier for clarification and conduct a thorough audit of their labor practices and sourcing claims.",
+          "platform": "LinkedIn",
+          "amplifies_to": [
+            "Risk Management Team",
+            "Procurement Lead"
+          ],
+          "persona_id": "supply_chain",
+          "persona_name": "Supply_chain"
+        }
+      ]
+    },
+    "macro": {
+      "mode": "macro",
+      "processing_ms": 19195,
+      "macro_outcomes": {
+        "extracted_factions": [
+          "Government",
+          "Corporate Sector",
+          "Activist Groups",
+          "International Community"
+        ],
+        "core_tension": "Economic Instability",
+        "timeline_A": {
+          "title": "Global Cooperation",
+          "description": "Nations come together to address economic instability through coordinated policy and international agreements.",
+          "societal_outcome": "Increased global stability and economic growth.",
+          "probability": 0.3
+        },
+        "timeline_B": {
+          "title": "Rise of Nationalism",
+          "description": "Countries turn inward, adopting protectionist policies and exacerbating economic instability.",
+          "societal_outcome": "Increased conflict and decreased global economic cooperation.",
+          "probability": 0.4
+        },
+        "timeline_C": {
+          "title": "Technological Revolution",
+          "description": "Rapid technological advancements lead to significant economic changes, potentially alleviating or worsening economic instability.",
+          "societal_outcome": "Transformed workforce and potentially increased inequality if not managed properly.",
+          "probability": 0.3
+        }
+      }
+    }
+  },
+  "error": null
+}

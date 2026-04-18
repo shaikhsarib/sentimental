@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+httpx
+python-dotenv
+neo4j
+python-multipart
+sse-starlette
+tenacity
+google-generativeai
+networkx
+chromadb
+numpy

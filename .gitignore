@@ -1,0 +1,16 @@
+.env
+.env.*
+node_modules/
+backend/venv/
+backend/__pycache__/
+backend/*.db
+
+# Temporary files
+extracted_roadmap.xml
+temp_roadmap.zip
+temp_roadmap_xml/
+Sentimental_V3_Roadmap.docx
+.agent/
+.DS_Store
+dist/
+build/
