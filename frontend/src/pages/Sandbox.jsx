@@ -9,7 +9,7 @@ import DebriefReport from '../components/DebriefReport'
 const API = import.meta.env.VITE_API_URL || ''
 
 export default function Sandbox() {
-  const { project, latestRun, setLatestRun, isSimulating, setIsSimulating } = useStore()
+  const { project, latestRun, setLatestRun, isSimulating, setIsSimulating, resetMission } = useStore()
   const [objective, setObjective] = useState('')
   const [mode, setMode] = useState('full')
   const [logs, setLogs] = useState([])
@@ -131,9 +131,16 @@ export default function Sandbox() {
                 {isSimulating ? '• SIMULATING SWARM' : latestRun?.status === 'completed' ? '✓ SIMULATION COMPLETE' : 'SYSTEM READY'}
             </div>
             {!isSimulating && (
-              <button className="btn" onClick={startRun} disabled={!project}>
-                <Play size={14} /> Ignite Simulation
-              </button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {latestRun && (
+                  <button className="btn" onClick={resetMission} style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--muted)' }}>
+                    Reset Mission
+                  </button>
+                )}
+                <button className="btn" onClick={startRun} disabled={!project}>
+                  <Play size={14} /> Ignite Simulation
+                </button>
+              </div>
             )}
          </div>
 
@@ -191,4 +198,26 @@ export default function Sandbox() {
 
     </motion.div>
   )
+}
+function AnimatedNumber({ value }) {
+  const [displayValue, setDisplayValue] = useState(0)
+  
+  useEffect(() => {
+    let start = displayValue
+    const end = value || 0
+    const duration = 1000
+    const startTime = performance.now()
+
+    const animate = (currentTime) => {
+        const elapsed = currentTime - startTime
+        const progress = Math.min(elapsed / duration, 1)
+        const easeOutQuad = 1 - (1 - progress) * (1 - progress)
+        const current = Math.floor(start + (end - start) * easeOutQuad)
+        setDisplayValue(current)
+        if (progress < 1) requestAnimationFrame(animate)
+    }
+    requestAnimationFrame(animate)
+  }, [value])
+
+  return <span>{displayValue.toLocaleString()}</span>
 }

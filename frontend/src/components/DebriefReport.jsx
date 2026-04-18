@@ -76,11 +76,32 @@ export default function DebriefReport({ runResult }) {
                
                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '200px', overflowY: 'auto' }}>
                   {evaluation.agent_grades?.map((grade, i) => (
-                    <div key={i} style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                       <span>{grade.persona_id.capitalize()}</span>
-                       <span style={{ color: grade.status === 'ACCURATE' ? 'var(--accent)' : 'var(--danger)', fontWeight: 600 }}>{grade.status}</span>
+                    <div key={i} style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '11px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: grade.status === 'ACCURATE' ? 'var(--accent)' : (grade.status === 'MISTAKE' ? 'var(--danger)' : 'var(--accent-amber)') }}></span>
+                          <span>{grade.persona_id?.capitalize()}</span>
+                       </div>
+                       <span style={{ color: grade.status === 'ACCURATE' ? 'var(--accent)' : 'var(--danger)', fontWeight: 600 }}>{grade.status.replace('_', ' ')}</span>
                     </div>
                   ))}
+               </div>
+               
+               {/* New Heatmap Indicator */}
+               <div style={{ marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '8px' }}>Swarm Consensus Heatmap</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: '4px', height: '12px' }}>
+                     {Array.from({length: 10}).map((_, i) => {
+                        const scoreThreshold = (i + 1) * 10;
+                        const isActive = evaluation.swarm_accuracy >= scoreThreshold;
+                        return (
+                           <div key={i} style={{ 
+                              background: isActive ? 'var(--accent)' : 'rgba(255,255,255,0.05)', 
+                              opacity: isActive ? (i + 1) / 10 : 0.2,
+                              borderRadius: '2px' 
+                           }}></div>
+                        )
+                     })}
+                  </div>
                </div>
             </div>
         </div>

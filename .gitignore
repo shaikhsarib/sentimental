@@ -2,8 +2,10 @@
 .env.*
 node_modules/
 backend/venv/
-backend/__pycache__/
-backend/*.db
+**/__pycache__/
+*.db
+backend/storage/chroma_db/
+engines/
 
 # Temporary files
 extracted_roadmap.xml

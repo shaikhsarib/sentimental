@@ -29,32 +29,36 @@ class MetacognitionEngine:
             error = abs(rx_score - target_score)
             
             # Drift = Difference from historical truth (biases)
-            drift = rx_score - grounding_score
+            # Positive drift means over-reacting relative to reality
+            drift_value = rx_score - grounding_score
             
             status = "ACCURATE"
             if error > 3:
                 status = "MISTAKE"
-            elif drift > 4:
+            elif drift_value >= 4:
                 status = "OVER_SENSITIVE"
-            elif drift < -4:
+            elif drift_value <= -4:
                 status = "UNDER_SENSITIVE"
                 
             performance_report.append({
                 "persona_id": persona_id,
                 "score": rx_score,
                 "error": error,
+                "drift_value": drift_value,
                 "status": status,
                 "feedback": self._generate_agent_feedback(persona_id, status, rx.get("reaction", ""))
             })
             
             if status != "ACCURATE":
+                # Create a persistent lesson for this project's tactical memory
                 lessons_learned.append({
                     "persona_id": persona_id,
-                    "lesson": f"In previous simulations similar to this, you were {status.lower().replace('_', ' ')}. Adjust your threshold for {rx.get('trigger_phrase', 'this topic')}."
+                    "lesson": f"In previous simulations similar to this, your risk assessment was {status.lower().replace('_', ' ')}. You gave a score of {rx_score} while reality showed {grounding_score}. Adjust your threshold for {rx.get('trigger_phrase', 'similar topics')}."
                 })
         
         return {
             "swarm_accuracy": self._calculate_swarm_accuracy(performance_report),
+            "aggregate_drift": round(sum(p["drift_value"] for p in performance_report) / len(performance_report), 2) if performance_report else 0,
             "agent_grades": performance_report,
             "lessons_learned": lessons_learned
         }

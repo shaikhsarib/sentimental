@@ -128,9 +128,19 @@ class CrisisDatabase:
             self.db.row_factory = sqlite3.Row
             cursor = self.db.execute(query, ids)
             
-            # Re-order results to match Chroma's similarity ranking
+            # Re-order results to match Chroma's similarity ranking and attach distance
+            distances = results.get('distances', [[]])[0]
+            dist_map = {id: dist for id, dist in zip(ids, distances)}
+            
             rows = {row['id']: dict(row) for row in cursor.fetchall()}
-            sorted_results = [rows[id] for id in ids if id in rows]
+            sorted_results = []
+            for id in ids:
+                if id in rows:
+                    row = rows[id]
+                    # Convert distance to a 0-1 similarity score (Chroma distances are squared L2 by default)
+                    # For cosine or L2, a simple inversion/normalization works for reporting
+                    row['similarity_score'] = round(max(0, 1 - dist_map.get(id, 0)), 4)
+                    sorted_results.append(row)
             return sorted_results
             
         except Exception as e:

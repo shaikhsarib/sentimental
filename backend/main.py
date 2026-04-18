@@ -88,13 +88,25 @@ async def _run_project_simulation(project_id: str, run_id: str, doc: Dict, reque
     try:
         project = project_store.get_project(project_id)
         custom_personas = project.get("personas") if project else None
+        
+        # Load Tactical Memory (Lessons Learned)
+        lessons = project.get("tactical_memory", [])
 
         if request.mode == "shield":
-            result = await simulation_runner.run_shield(doc["content"], request.content_type, request.industry, request.objective, on_persona_result=on_persona, custom_personas=custom_personas)
+            result = await simulation_runner.run_shield(doc["content"], request.content_type, request.industry, request.objective, on_persona_result=on_persona, custom_personas=custom_personas, lessons=lessons)
         elif request.mode == "macro":
             result = await simulation_runner.run_macro(doc["content"], request.objective)
         else:
-            result = await simulation_runner.run_full(doc["content"], request.content_type, request.industry, request.objective, on_persona_result=on_persona, custom_personas=custom_personas)
+            result = await simulation_runner.run_full(doc["content"], request.content_type, request.industry, request.objective, on_persona_result=on_persona, custom_personas=custom_personas, lessons=lessons)
+
+        # Extract contextually relevant lessons from the run results
+        evaluation = result.get("evaluation") if request.mode == "shield" else (result.get("shield", {}).get("evaluation") if request.mode == "full" else None)
+        
+        if evaluation and evaluation.get("lessons_learned"):
+            new_lessons = evaluation["lessons_learned"]
+            # Merge and limit to last 50 lessons to prevent prompt bloating
+            combined_lessons = (lessons + new_lessons)[-50:]
+            project_store.update_project(project_id, {"tactical_memory": combined_lessons})
 
         run_store.update_run(project_id, run_id, {
             "status": "completed",

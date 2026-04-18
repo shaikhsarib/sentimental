@@ -22,7 +22,7 @@ class SimulationRunner:
         self.macro_sim = MacroSimulationEngine()
         self.meta_engine = MetacognitionEngine()
 
-    async def run_shield(self, content: str, content_type: str = "general", industry: str = "general", objective: str = "General behavioral scan", on_persona_result=None, custom_personas=None, calibration_overrides=None) -> Dict:
+    async def run_shield(self, content: str, content_type: str = "general", industry: str = "general", objective: str = "General behavioral scan", on_persona_result=None, custom_personas=None, calibration_overrides=None, lessons: List[Dict] = None) -> Dict:
         """Step 4: Execute grounded swarm simulation."""
         start_time = time.time()
 
@@ -33,9 +33,16 @@ class SimulationRunner:
         # Round 1: Initial Independent Reactions
         round1_reactions = []
         if custom_personas:
-            tasks = [run_synthesized_persona(p, content, content_type, objective) for p in custom_personas]
+            tasks = []
+            for p in custom_personas:
+                # Filter lessons for this specific persona
+                persona_lessons = [L["lesson"] for L in lessons if L["persona_id"] == p.get("persona_id") or L["persona_id"] == p.get("name")] if lessons else None
+                tasks.append(run_synthesized_persona(p, content, content_type, objective, lessons=persona_lessons))
         else:
-            tasks = [run_individual_persona(pid, content, content_type, objective) for pid in PERSONA_MODEL_ROUTING.keys()]
+            tasks = []
+            for pid in PERSONA_MODEL_ROUTING.keys():
+                persona_lessons = [L["lesson"] for L in lessons if L["persona_id"] == pid] if lessons else None
+                tasks.append(run_individual_persona(pid, content, content_type, objective, lessons=persona_lessons))
         
         for coro in asyncio.as_completed(tasks):
             res = await coro
@@ -48,7 +55,10 @@ class SimulationRunner:
         # Round 2: The Swarm Debate (Consensus Pass)
         personas_reactions = []
         if custom_personas:
-            tasks = [run_synthesized_persona(p, content, content_type, objective, consensus_brief=consensus_text) for p in custom_personas]
+            tasks = []
+            for p in custom_personas:
+                persona_lessons = [L["lesson"] for L in lessons if L["persona_id"] == p.get("persona_id") or L["persona_id"] == p.get("name")] if lessons else None
+                tasks.append(run_synthesized_persona(p, content, content_type, objective, consensus_brief=consensus_text, lessons=persona_lessons))
             for coro in asyncio.as_completed(tasks):
                 res = await coro
                 if isinstance(res, dict) and res.get("triggered"):
@@ -141,8 +151,8 @@ class SimulationRunner:
             "macro_outcomes": macro_results,
         }
 
-    async def run_full(self, content: str, content_type: str, industry: str, objective: str = "", on_persona_result=None, custom_personas=None) -> Dict:
-        shield_task = self.run_shield(content, content_type, industry, objective, on_persona_result=on_persona_result, custom_personas=custom_personas)
+    async def run_full(self, content: str, content_type: str, industry: str, objective: str = "", on_persona_result=None, custom_personas=None, lessons: List[Dict] = None) -> Dict:
+        shield_task = self.run_shield(content, content_type, industry, objective, on_persona_result=on_persona_result, custom_personas=custom_personas, lessons=lessons)
         macro_task = self.run_macro(content, objective)
         shield_result, macro_result = await asyncio.gather(shield_task, macro_task)
         return {

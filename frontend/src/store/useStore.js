@@ -23,7 +23,9 @@ const useStore = create(
       setHasHydrated: (state) => set({ _hasHydrated: state }),
       
       // Reset
-      resetStore: () => set({ project: null, latestRun: null, activeStage: 'identity', activeNode: null }),
+      resetStore: () => set({ project: null, latestRun: null, activeStage: 'identity', activeNode: null, _hasHydrated: true }),
+      
+      resetMission: () => set({ latestRun: null, activeStage: 'identity', activeNode: null }),
       
       // Computed-like logic
       getActiveProjectId: () => get().project?.project_id || null,

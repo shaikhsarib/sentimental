@@ -118,6 +118,18 @@ class GraphStore:
         node_count = len(nodes)
         edge_count = len(edges)
 
+        if node_count == 0:
+            return {
+                "node_count": 0,
+                "edge_count": 0,
+                "density": 0,
+                "world_cohesion": 0,
+                "top_nodes": [],
+                "top_edges": [],
+                "top_bridges": [],
+                "is_connected": True
+            }
+
         # Create NetworkX graph for advanced math
         G = nx.Graph()
         for node in nodes:
@@ -128,7 +140,11 @@ class GraphStore:
         # Core Graph Math
         degrees = dict(G.degree())
         betweenness = nx.betweenness_centrality(G)
+        closeness = nx.closeness_centrality(G)
         density = nx.density(G)
+        
+        # World Cohesion is a normalized score of density and connectivity
+        world_cohesion = round(density * 100, 1)
         
         # Identify "Bridging" nodes (High Betweenness)
         top_bridges = sorted(
@@ -144,13 +160,14 @@ class GraphStore:
                     "label": node.get("label", node["id"]),
                     "degree": degrees.get(node["id"], 0),
                     "betweenness": round(betweenness.get(node["id"], 0), 4),
+                    "closeness": round(closeness.get(node["id"], 0), 4),
                     "weight": node.get("weight", 1),
                 }
                 for node in nodes
             ],
             key=lambda n: (n["betweenness"], n["degree"]),
             reverse=True,
-        )[:8]
+        )[:10]
 
         top_edges = sorted(
             [
@@ -163,16 +180,17 @@ class GraphStore:
             ],
             key=lambda e: e["weight"],
             reverse=True,
-        )[:8]
+        )[:10]
 
         return {
             "node_count": node_count,
             "edge_count": edge_count,
             "density": round(density, 4),
+            "world_cohesion": world_cohesion,
             "top_nodes": top_nodes,
             "top_edges": top_edges,
             "top_bridges": top_bridges,
-            "is_connected": nx.is_connected(G) if node_count > 0 else True
+            "is_connected": nx.is_connected(G)
         }
 
     def get_graph_metrics(self, project_id: str) -> Dict:

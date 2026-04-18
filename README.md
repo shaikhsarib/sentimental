@@ -1,10 +1,10 @@
 # Sentimental V5: Industrial Intelligence Terminal 🛡️
 
-**Sentimental** is a high-fidelity narrative simulation and strategic intelligence platform. Built with the **MiroFlow** logic, it allows you to ingest raw data, synthesize knowledge graphs, and run "Adversarial Swarm Debates" to predict how a narrative will outbreak across a population of **10,000,000 nodes.**
+**Sentimental** is a high-fidelity narrative simulation and strategic intelligence platform. Built with the **SentiFlow** logic, it allows you to ingest raw data, synthesize knowledge graphs, and run "Adversarial Swarm Debates" to predict how a narrative will outbreak across a population of **10,000,000 nodes.**
 
 ---
 
-## 🏛️ The V5 "MiroFlow" Architecture
+## 🏛️ The V5 "SentiFlow" Architecture
 
 Sentimental operates on a sequential 5-stage intelligence lifecycle:
 
