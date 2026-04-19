@@ -10,3 +10,6 @@ google-generativeai
 networkx
 chromadb
 numpy
+pytest
+pytest-asyncio
+pytest-mock

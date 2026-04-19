@@ -3,9 +3,14 @@
 node_modules/
 backend/venv/
 **/__pycache__/
+*.pyc
+*.pyo
+*.pyd
 *.db
-backend/storage/chroma_db/
-engines/
+backend/storage/**
+!backend/storage/.gitkeep
+**/chroma_db/**
+.ipynb_checkpoints/
 
 # Temporary files
 extracted_roadmap.xml
