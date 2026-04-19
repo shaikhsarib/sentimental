@@ -1,23 +1,36 @@
 # SentiFlow V5: Industrial Intelligence Terminal 🛡️🛰️
 
-**SentiFlow** is a high-fidelity narrative simulation and strategic intelligence platform designed for industrial-grade risk assessment. It utilizes an **Adversarial Swarm Architecture** to ingest raw data, synthesize complex knowledge graphs, and run population-scale projections across **10,000,000 nodes**.
+**SentiFlow** is a high-fidelity narrative simulation and strategic intelligence platform designed for industrial-grade risk assessment. Built with an **Adversarial Swarm Architecture**, it allows intelligence analysts to quantify risk using the **Narrative R0 Index** and run population-scale projections across **10,000,000 nodes.**
 
 ---
 
-## 🏛️ Project Vision & SentiFlow Architecture
+## 🏛️ Strategic Narrative & SentiFlow Architecture
 
-SentiFlow transforms behavioral simulation from a passive dashboard into an active intelligence engine. It is designed to detect "Agentic Drift" and "Narrative Funnels" before they manifest in real-world crises.
+SentiFlow transforms behavioral simulation from a passive dashboard into an active intelligence engine. Our technical moat lies in the fusion of **Adversarial Multi-Agent Debate** and **Epidemiological Population Projection**.
 
-### The 5 intelligence Pillars
-1.  **IDENTITY (Mission Ingestion)**: Ingest raw documents or OSINT URLs. Sets the Tactical Ground Truth.
-2.  **INTELLIGENCE (Knowledge Extraction)**: NetworkX-powered graph synthesis. Maps the "World Model" and detects bridging nodes.
-3.  **WORLD (Persona Synthesis)**: Auto-derivation of specialized AI agents. Injects "Tactical Memory" (Lessons Learned) to sharpen simulation accuracy.
-4.  **SWARM (Consensus Debate)**: A 2-round adversarial debate where agents pressure-test each other's risk assessments.
-5.  **DEBRIEF (Strategic Projection)**: SEIR-modeled trajectory of the narrative outbreak with an actionable mitigation playbook.
+### The Intelligence Lifecycle
+SentiFlow operates on a sequential 5-stage pipeline to ensure every prediction is grounded in both mathematical graph theory and historical crisis data.
+
+1.  **IDENTITY (Mission Ingestion)**: Ingest raw docs/URLs to establish the "Tactical Ground Truth."
+2.  **INTELLIGENCE (Knowledge Extraction)**: NetworkX-powered graph synthesis. Detects **Bridging Nodes** and computes **World Cohesion**.
+3.  **WORLD (Persona Synthesis)**: Auto-derivation of specialized AI agents with **Tactical Memory injection**, grounding behavior in previous "Lessons Learned."
+4.  **SWARM (Consensus Debate)**: A multi-round adversarial debate where agents pressure-test each other's risk assessments to reach a high-confidence consensus.
+5.  **DEBRIEF (Strategic Projection)**: Uses the **Narrative R0 Index** and a population-scale SEIR model to visualize the trajectory of the narrative "outbreak."
 
 ---
 
-## 📂 Exhaustive File Structure Analysis
+## 🛠️ Tactical Technical Stack
+
+*   **Logic Core**: Python 3.14 (FastAPI).
+*   **Graph Math**: NetworkX (Mathematics-first graph computation).
+*   **Epidemiological Moat**: SEIR-modeled trajectory for population-scale projection (**Narrative R0 Index**).
+*   **Semantic Intelligence**: ChromaDB (Vector Search with 100+ Historical Crises).
+*   **LLM Inference**: Groq-accelerated Llama-3 (8B/70B Mix).
+*   **Frontend**: React 19 + Vite 8 + Zustand (Persistent Workspace Memory).
+
+---
+
+## 📂 Repository Architecture
 
 ### 🛡️ Backend: Tactical Intelligence Engine (`/backend`)
 The backend is an asynchronous Python environment built for high-performance inference and mathematical modeling.
