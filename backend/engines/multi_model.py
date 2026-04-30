@@ -2,71 +2,51 @@ import asyncio
 import os
 import httpx
 import json
-from typing import List, Dict
+import yaml
+from typing import List, Dict, Optional
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-PERSONA_MODEL_ROUTING = {
-    "activist": {
-        "model": "llama-3.1-8b-instant",  # Groq model mapping
-        "temperature": 0.9,     
-        "system_prefix": "You are deeply passionate about social justice. You've seen too many brands exploit causes for profit. You're tired and you're not going to be nice about it.",
-    },
-    "conservative": {
-        "model": "llama-3.1-8b-instant",
-        "temperature": 0.6,     
-        "system_prefix": "You hold traditional values deeply. You believe corporations should sell products, not push ideologies. You're a loyal customer until a brand disrespects your values.",
-    },
-    "journalist": {
-        "model": "llama-3.1-8b-instant",
-        "temperature": 0.4,     
-        "system_prefix": "You are a meticulous investigative journalist. You look for contradictions, hypocrisy, and misleading claims. You build threads with evidence.",
-    },
-    "genz": {
-        "model": "llama-3.1-8b-instant",
-        "temperature": 0.95,    
-        "system_prefix": "You're 20, chronically online, and you can smell corporate cringe from a mile away. You communicate in memes, sarcasm, and brutal honesty.",
-    },
-    "competitor": {
-        "model": "llama-3.1-8b-instant",
-        "temperature": 0.3,     
-        "system_prefix": "You work at the biggest rival company. You're reading this content looking for ANYTHING you can use against them in sales calls, battle cards, or competitive blog posts.",
-    },
-    "regulator": {
-        "model": "llama-3.3-70b-versatile",
-        "temperature": 0.2,     
-        "system_prefix": "You spent 15 years at the FTC. You know every regulation by heart. You evaluate content strictly against legal frameworks. You do not speculate - you cite specific rules.",
-    },
-    "parent": {
-        "model": "llama-3.1-8b-instant",
-        "temperature": 0.7,     
-        "system_prefix": "You're a parent of three kids under 12. Every piece of content you see, you ask: 'Is this safe for my children? Is this appropriate? Would I want my kids seeing this?'",
-    },
-    "legal": {
-        "model": "llama-3.3-70b-versatile",
-        "temperature": 0.2,
-        "system_prefix": "You are in-house legal counsel. You look for contractual risk, claims exposure, and compliance issues with conservative judgment.",
-    },
-    "investor": {
-        "model": "llama-3.1-8b-instant",
-        "temperature": 0.3,
-        "system_prefix": "You are a skeptical investor. You care about reputational risk, earnings impact, and regulatory blowback.",
-    },
-    "community_manager": {
-        "model": "llama-3.1-8b-instant",
-        "temperature": 0.6,
-        "system_prefix": "You manage online communities. You look for tone issues, moderation blowups, and flashpoints that turn into dogpiles.",
-    },
-    "creator": {
-        "model": "llama-3.1-8b-instant",
-        "temperature": 0.8,
-        "system_prefix": "You are a creator who makes reaction content. You look for viral hooks and public contradictions.",
-    },
-    "supply_chain": {
-        "model": "llama-3.1-8b-instant",
-        "temperature": 0.4,
-        "system_prefix": "You are a supply chain and operations lead. You care about sourcing claims, labor ethics, and delivery credibility.",
-    },
-}
+# ─── TAXONOMY LOADER ───
+TAXONOMY_PATH = os.path.join(os.path.dirname(__file__), "taxonomy.yaml")
+
+class TaxonomyManager:
+    """Manages the tiered agent taxonomy and model routing."""
+    def __init__(self, yaml_path: str):
+        self.yaml_path = yaml_path
+        self.data = self._load_yaml()
+        self.personas = self._flatten_personas()
+
+    def _load_yaml(self) -> dict:
+        try:
+            with open(self.yaml_path, "r", encoding="utf-8") as f:
+                return yaml.safe_load(f)
+        except Exception as e:
+            print(f"[TAXONOMY ERROR] Failed to load {self.yaml_path}: {e}")
+            return {"tiers": {}}
+
+    def _flatten_personas(self) -> dict:
+        """Flattens nested tiers into a single lookup for performance."""
+        flat = {}
+        tiers = self.data.get("tiers", {})
+        for tier_name, tier_config in tiers.items():
+            tier_model = tier_config.get("model", "llama-3.1-8b-instant")
+            tier_temp = tier_config.get("temperature", 0.7)
+            
+            for pid, pconfig in tier_config.get("personas", {}).items():
+                flat[pid] = {
+                    **pconfig,
+                    "tier": tier_name,
+                    "model": pconfig.get("model", tier_model),
+                    "temperature": pconfig.get("temperature", tier_temp),
+                    "persona_id": pid
+                }
+        return flat
+
+    def get_persona(self, persona_id: str) -> Optional[dict]:
+        return self.personas.get(persona_id)
+
+# Initialize global manager
+taxonomy = TaxonomyManager(TAXONOMY_PATH)
 
 @retry(
     stop=stop_after_attempt(3),
@@ -82,7 +62,7 @@ async def call_llm_with_settings(prompt: str, model: str, temperature: float) ->
     key = os.getenv("GROQ_API_KEY")
     if not key or "your-key" in key:
         # Fallback to local Ollama if Groq is not configured
-        return await call_ollama(prompt, "llama3.1", temperature)
+        return await call_ollama(prompt, "llama-3.1-8b-instant", temperature)
         
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
@@ -96,7 +76,7 @@ async def call_llm_with_settings(prompt: str, model: str, temperature: float) ->
         ]
     }
     
-    async with httpx.AsyncClient(timeout=15.0) as client:
+    async with httpx.AsyncClient(timeout=25.0) as client:
         try:
             resp = await client.post(url, headers=headers, json=payload)
             resp.raise_for_status()
@@ -126,18 +106,22 @@ async def call_ollama(prompt: str, model: str, temperature: float) -> dict:
             return {"error": str(e), "triggered": False}
 
 async def run_individual_persona(persona_id: str, content: str, content_type: str, objective: str, lessons: List[str] = None) -> dict:
-    """Run a single persona analysis with optional 'Lessons Learned' for self-correction."""
-    config = PERSONA_MODEL_ROUTING.get(persona_id)
-    if not config: return {"triggered": False, "persona_id": persona_id}
+    """Run a single persona analysis using the dynamic taxonomy."""
+    config = taxonomy.get_persona(persona_id)
+    if not config: 
+        return {"triggered": False, "persona_id": persona_id, "error": "Persona not in taxonomy"}
 
     objective_text = objective.strip() or "General risk scan"
     
-    # Inject Self-Correction memory if available
+    # Inject Tactical Memory if available
     lesson_text = ""
     if lessons:
-        lesson_text = "\n[SELF-CORRECTION DATA - LEARNED FROM PAST MISTAKES]:\n" + "\n".join([f"- {L}" for L in lessons])
+        lesson_text = "\n[TACTICAL MEMORY - LEARNED FROM PAST MISTAKES]:\n" + "\n".join([f"- {L}" for L in lessons])
     
-    prompt = f"""{config['system_prefix']}
+    # Use Tier-specific system prompts from taxonomy
+    system_prefix = config.get("system_prefix", "Analyze this content from your perspective.")
+    
+    prompt = f"""{system_prefix}
 {lesson_text}
 
 Analyze this content and respond AS THIS PERSONA:
@@ -151,6 +135,7 @@ Respond with strictly valid JSON:
     "triggered": true,
     "reaction": "your authentic reaction in your voice",
     "trigger_phrase": "exact phrase that triggered you",
+    "citation": "the specific snippet from the content that supports this reaction",
     "emotion": "primary emotion",
     "virality_risk": 5, // integer 1-10
     "follow_up_action": "what you do next",
@@ -162,14 +147,15 @@ If the content doesn't trigger you AT ALL, set triggered to false and explain br
 """
     result = await call_llm_with_settings(prompt, config["model"], config["temperature"])
     result["persona_id"] = persona_id
-    # Default persona name
-    result["persona_name"] = persona_id.capitalize()
+    result["persona_name"] = config.get("name", persona_id)
+    result["tier"] = config.get("tier", "unknown")
     return result
 
 async def run_synthesized_persona(persona: dict, content: str, content_type: str, objective: str, consensus_brief: str = None, lessons: List[str] = None) -> dict:
-    """Run simulation for a synthesized agent with self-correcting logic."""
-    # Synthesized personas are higher quality; use a stronger model
-    model = "llama-3.3-70b-versatile" 
+    """Run simulation for a synthesized agent (usually Tier 1 Experts)."""
+    # Synthesized personas default to high-reasoning 70B unless specified
+    model = persona.get("model", "llama-3.3-70b-versatile")
+    temp = persona.get("temperature", 0.4)
     
     objective_text = objective.strip() or "General analysis"
     
@@ -200,12 +186,13 @@ Respond with strictly valid JSON:
     "trigger_phrase": "specific aspect that caught your focus",
     "emotion": "primary psychological state",
     "virality_risk": 5, // 1-10 (adjust based on swarm consensus if applicable)
-    "strategic_implication": "how this changes the world model"
+    "strategic_implication": "how this changes the world model",
+    "citations": ["direct quotes or data points from the mission docs"]
 }}
 
 If the content is irrelevant to your role, set triggered to false.
 """
-    result = await call_llm_with_settings(prompt, model, 0.7)
+    result = await call_llm_with_settings(prompt, model, temp)
     result["persona_id"] = persona.get("persona_id", persona['name'])
     result["persona_name"] = persona['name']
     return result
@@ -220,10 +207,10 @@ async def run_grounded_swarm(custom_personas: list, content: str, content_type: 
     return [r for r in results if isinstance(r, dict) and r.get("triggered")]
 
 async def run_all_personas(content: str, content_type: str, objective: str = "") -> list:
-    """Legacy: Run all generic personas in parallel."""
+    """Legacy: Run all personas from the taxonomy in parallel."""
     tasks = [
         run_individual_persona(pid, content, content_type, objective)
-        for pid in PERSONA_MODEL_ROUTING.keys()
+        for pid in taxonomy.personas.keys()
     ]
     results = await asyncio.gather(*tasks, return_exceptions=True)
     valid_results = [r for r in results if isinstance(r, dict) and r.get("triggered", False)]

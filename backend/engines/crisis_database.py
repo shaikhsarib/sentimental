@@ -19,13 +19,15 @@ class CrisisDatabase:
             
         self.db = sqlite3.connect(db_path, check_same_thread=False)
         
-        # Lazy import ChromaDB for vector search
+        # Lazy import ChromaDB for vector search with robustness
         try:
             import chromadb
             chroma_path = os.path.join(db_dir, "chroma_db")
+            # Use a shorter timeout for initialization if possible
             self.chroma_client = chromadb.PersistentClient(path=chroma_path)
             self.collection = self.chroma_client.get_or_create_collection(name="crises")
-        except ImportError:
+        except Exception as e:
+            print(f"[DB WARN] ChromaDB initialization failed: {e}. Falling back to FTS only.")
             self.chroma_client = None
             self.collection = None
         

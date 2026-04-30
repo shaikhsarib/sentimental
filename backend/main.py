@@ -1,15 +1,21 @@
-from fastapi import FastAPI, Request, HTTPException, BackgroundTasks, UploadFile, File
+from fastapi import FastAPI, Request, HTTPException, BackgroundTasks, UploadFile, File, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from pydantic import BaseModel, validator
 from typing import Optional, List, Dict
 import time
 import uuid
 import os
 import json
+import re
+import hashlib
+import secrets
+from collections import defaultdict
 from dotenv import load_dotenv
 
 from engines.crisis_database import CrisisDatabase
 from engines.multi_model import call_llm_with_settings
+from engines.consensus_engine import ConsensusEngine
 from services.project_store import ProjectStore
 from services.graph_store import GraphStore
 from services.run_store import RunStore
@@ -19,23 +25,163 @@ import asyncio
 
 load_dotenv()
 
-app = FastAPI(title="Sentimental V3 API", version="3.0.0")
+# ─── ENVIRONMENT ───
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+IS_PRODUCTION = ENVIRONMENT == "production"
 
-# CORS setup
-origins = [
-    os.getenv("FRONTEND_URL", "http://localhost:5173"),
-    "http://127.0.0.1:5173",
-]
+app = FastAPI(
+    title="SentiFlow V5 API",
+    version="5.0.0",
+    docs_url=None if IS_PRODUCTION else "/docs",     # Disable docs in production
+    redoc_url=None if IS_PRODUCTION else "/redoc",
+)
+
+# ─── SECURITY: CORS ───
+# In production, only allow explicit origins. In dev, allow localhost.
+ALLOWED_ORIGINS = []
+if IS_PRODUCTION:
+    # Only allow your actual frontend domains
+    prod_frontend = os.getenv("FRONTEND_URL", "")
+    if prod_frontend:
+        ALLOWED_ORIGINS.append(prod_frontend)
+    # Add any additional production origins here
+    extra_origins = os.getenv("EXTRA_CORS_ORIGINS", "")
+    if extra_origins:
+        ALLOWED_ORIGINS.extend([o.strip() for o in extra_origins.split(",") if o.strip()])
+else:
+    ALLOWED_ORIGINS = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+    ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],              # Only methods we actually use
+    allow_headers=["Content-Type", "Authorization", "X-API-Key"],  # Explicit headers
+    max_age=3600,                                # Cache preflight for 1 hour
 )
 
+# ─── SECURITY: TRUSTED HOSTS ───
+if IS_PRODUCTION:
+    allowed_hosts = os.getenv("ALLOWED_HOSTS", "").split(",")
+    allowed_hosts = [h.strip() for h in allowed_hosts if h.strip()]
+    if allowed_hosts:
+        app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
+
+# ─── SECURITY: RATE LIMITING (In-Memory — swap for Redis in production) ───
+class RateLimiter:
+    """
+    Simple in-memory rate limiter.
+    For production, replace with SlowAPI + Redis.
+    """
+    def __init__(self, requests_per_minute: int = 30, burst_limit: int = 10):
+        self.rpm = requests_per_minute
+        self.burst = burst_limit
+        self.requests: Dict[str, List[float]] = defaultdict(list)
+    
+    def _get_client_id(self, request: Request) -> str:
+        """Extract client identifier from API key or IP."""
+        api_key = request.headers.get("X-API-Key", "")
+        if api_key:
+            return f"key:{hashlib.sha256(api_key.encode()).hexdigest()[:16]}"
+        
+        forwarded = request.headers.get("X-Forwarded-For", "")
+        if forwarded:
+            return f"ip:{forwarded.split(',')[0].strip()}"
+        return f"ip:{request.client.host if request.client else 'unknown'}"
+    
+    def check(self, request: Request) -> bool:
+        """Returns True if request is allowed, False if rate limited."""
+        client_id = self._get_client_id(request)
+        now = time.time()
+        
+        # Clean old entries
+        self.requests[client_id] = [
+            t for t in self.requests[client_id] if now - t < 60
+        ]
+        
+        # Check rate
+        if len(self.requests[client_id]) >= self.rpm:
+            return False
+        
+        # Check burst (requests in last 2 seconds)
+        recent = [t for t in self.requests[client_id] if now - t < 2]
+        if len(recent) >= self.burst:
+            return False
+        
+        self.requests[client_id].append(now)
+        return True
+
+rate_limiter = RateLimiter(
+    requests_per_minute=int(os.getenv("RATE_LIMIT_RPM", "60")),
+    burst_limit=int(os.getenv("RATE_LIMIT_BURST", "15")),
+)
+
+# ─── SECURITY: Rate Limit Middleware ───
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    """Apply rate limiting to all API endpoints."""
+    # Skip rate limiting for health checks
+    if request.url.path in ["/", "/api/health"]:
+        return await call_next(request)
+    
+    if not rate_limiter.check(request):
+        return JSONResponse(
+            status_code=429,
+            content={
+                "detail": "Rate limit exceeded. Please slow down.",
+                "retry_after_seconds": 60
+            }
+        )
+    
+    response = await call_next(request)
+    return response
+
+from starlette.responses import JSONResponse
+
+# ─── SECURITY: Request Size Limiting ───
 MAX_CONTENT_CHARS = 50000
+MAX_REQUEST_BODY_BYTES = 10 * 1024 * 1024  # 10MB max
+
+@app.middleware("http")
+async def request_size_middleware(request: Request, call_next):
+    """Reject oversized requests before they consume resources."""
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > MAX_REQUEST_BODY_BYTES:
+        return JSONResponse(
+            status_code=413,
+            content={"detail": f"Request too large. Maximum {MAX_REQUEST_BODY_BYTES // (1024*1024)}MB."}
+        )
+    return await call_next(request)
+
+# ─── SECURITY: Security Headers Middleware ───
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    """Add security headers to all responses."""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    if IS_PRODUCTION:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
+# ─── INPUT SANITIZATION ───
+def sanitize_text_input(text: str, max_length: int = MAX_CONTENT_CHARS) -> str:
+    """Sanitize text input to prevent injection and abuse."""
+    if not text:
+        return ""
+    # Truncate to max length
+    text = text[:max_length]
+    # Remove null bytes
+    text = text.replace("\x00", "")
+    # Remove control characters (keep newlines and tabs)
+    text = re.sub(r'[\x01-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)
+    return text.strip()
 
 # Initialize engines
 db_path = os.path.join(os.path.dirname(__file__), "data", "sentimental.db")
@@ -49,6 +195,7 @@ graph_store = GraphStore(
     os.getenv("NEO4J_PASSWORD"),
 )
 run_store = RunStore(storage_path)
+consensus_engine = ConsensusEngine()
 
 # Event streams for SSE
 run_event_queues: Dict[str, asyncio.Queue] = {}
@@ -62,14 +209,45 @@ class AnalyzeRequest(BaseModel):
     industry: str = "general"
     mode: str = "shield" # 'shield' for B2B PR, 'macro' for Novel/Academic Time-Skip
 
+    @validator('content')
+    def validate_content(cls, v):
+        v = sanitize_text_input(v)
+        if not v:
+            raise ValueError('Content cannot be empty')
+        if len(v) > MAX_CONTENT_CHARS:
+            raise ValueError(f'Content too long. Max {MAX_CONTENT_CHARS} chars.')
+        return v
+
+    @validator('content_type')
+    def validate_content_type(cls, v):
+        allowed = {"social_post", "ad_copy", "press_release", "product_page", 
+                   "job_posting", "email", "blog", "speech", "policy", "general", "text", "file"}
+        if v not in allowed:
+            raise ValueError(f'Invalid content_type. Allowed: {", ".join(allowed)}')
+        return v
+
 class CreateProjectRequest(BaseModel):
     name: str
     description: str = ""
+
+    @validator('name')
+    def validate_name(cls, v):
+        v = sanitize_text_input(v, max_length=200)
+        if not v or len(v) < 2:
+            raise ValueError('Project name must be at least 2 characters')
+        return v
 
 class AddDocumentRequest(BaseModel):
     title: str
     content: str
     content_type: str = "text"
+
+    @validator('content')
+    def validate_content(cls, v):
+        v = sanitize_text_input(v)
+        if not v:
+            raise ValueError('Document content cannot be empty')
+        return v
 
 class RunRequest(BaseModel):
     mode: str = "full"  # shield, macro, or full
@@ -77,8 +255,25 @@ class RunRequest(BaseModel):
     industry: str = "general"
     objective: str = ""
 
+    @validator('mode')
+    def validate_mode(cls, v):
+        if v not in {"shield", "macro", "full"}:
+            raise ValueError('Mode must be shield, macro, or full')
+        return v
+
+    @validator('objective')
+    def validate_objective(cls, v):
+        return sanitize_text_input(v, max_length=1000)
+
 class QARequest(BaseModel):
     question: str
+
+    @validator('question')
+    def validate_question(cls, v):
+        v = sanitize_text_input(v, max_length=2000)
+        if not v:
+            raise ValueError('Question cannot be empty')
+        return v
 
 async def _run_project_simulation(project_id: str, run_id: str, doc: Dict, request: RunRequest) -> None:
     async def on_persona(res):
@@ -98,6 +293,27 @@ async def _run_project_simulation(project_id: str, run_id: str, doc: Dict, reque
             result = await simulation_runner.run_macro(doc["content"], request.objective)
         else:
             result = await simulation_runner.run_full(doc["content"], request.content_type, request.industry, request.objective, on_persona_result=on_persona, custom_personas=custom_personas, lessons=lessons)
+
+        # ── SILENT CONSENSUS PROTOCOL ──
+        # Evaluate swarm consensus on shield/full results
+        shield_result = result if request.mode == "shield" else result.get("shield") if request.mode == "full" else None
+        
+        if shield_result and shield_result.get("persona_reactions"):
+            consensus = consensus_engine.evaluate_consensus(shield_result["persona_reactions"])
+            
+            if request.mode == "shield":
+                result["consensus"] = consensus
+            elif request.mode == "full" and "shield" in result:
+                result["shield"]["consensus"] = consensus
+            
+            # If consensus says refuse, mark the run status
+            if consensus.get("should_refuse"):
+                if request.mode == "shield":
+                    result["consensus_status"] = consensus["status"]
+                    result["intelligence_gaps"] = consensus["intelligence_gaps"]
+                elif request.mode == "full" and "shield" in result:
+                    result["shield"]["consensus_status"] = consensus["status"]
+                    result["shield"]["intelligence_gaps"] = consensus["intelligence_gaps"]
 
         # Extract contextually relevant lessons from the run results
         evaluation = result.get("evaluation") if request.mode == "shield" else (result.get("shield", {}).get("evaluation") if request.mode == "full" else None)
@@ -132,9 +348,6 @@ async def _run_project_simulation(project_id: str, run_id: str, doc: Dict, reque
 @app.post("/api/analyze")
 async def analyze_content(request: AnalyzeRequest):
     """Legacy endpoint: runs shield or macro for a single prompt."""
-    if len(request.content) > MAX_CONTENT_CHARS:
-        raise HTTPException(status_code=400, detail=f"Content too long. Max {MAX_CONTENT_CHARS} chars.")
-    
     if request.mode == "macro":
         return await simulation_runner.run_macro(request.content)
     return await simulation_runner.run_shield(request.content, request.content_type, request.industry)
@@ -168,8 +381,6 @@ async def get_project(project_id: str):
 
 @app.post("/api/projects/{project_id}/documents/text")
 async def add_text_document(project_id: str, request: AddDocumentRequest):
-    if len(request.content) > MAX_CONTENT_CHARS:
-        raise HTTPException(status_code=400, detail=f"Content too long. Max {MAX_CONTENT_CHARS} chars.")
     try:
         return project_store.add_document_text(project_id, request.title, request.content, request.content_type)
     except FileNotFoundError:
@@ -178,10 +389,22 @@ async def add_text_document(project_id: str, request: AddDocumentRequest):
 
 @app.post("/api/projects/{project_id}/documents/file")
 async def add_file_document(project_id: str, file: UploadFile = File(...)):
+    # Validate file size
+    contents = await file.read()
+    if len(contents) > MAX_REQUEST_BODY_BYTES:
+        raise HTTPException(status_code=413, detail="File too large")
+    
+    # Validate file type (only allow text-based files)
+    allowed_extensions = {".txt", ".md", ".csv", ".json", ".xml", ".html", ".pdf", ".doc", ".docx"}
+    filename = file.filename or "uploaded.txt"
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in allowed_extensions:
+        raise HTTPException(status_code=400, detail=f"File type '{ext}' not supported. Allowed: {', '.join(allowed_extensions)}")
+    
     try:
-        raw = await file.read()
-        content = raw.decode("utf-8", errors="ignore")
-        title = file.filename or "uploaded.txt"
+        content = contents.decode("utf-8", errors="ignore")
+        content = sanitize_text_input(content)
+        title = filename
         return project_store.add_document_text(project_id, title, content, "file")
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -374,21 +597,44 @@ def health_check():
     except Exception:
         db_status = "error"
 
+    # Check Groq API key presence
+    groq_key = os.getenv("GROQ_API_KEY", "")
+    groq_status = "configured" if groq_key and "your-key" not in groq_key else "missing"
+
     return {
         "status": "operational",
-        "version": "3.0.0",
+        "version": "5.0.0",
+        "engine": "SentiFlow V5 — Industrial Intelligence Terminal",
         "checks": {
             "sqlite": db_status,
             "neo4j": neo_status,
+            "groq_api": groq_status,
             "storage": "writable" if storage_ok else "readonly",
-            "environment": os.getenv("ENVIRONMENT", "development")
+            "consensus_engine": "active",
+            "seir_engine": "active",
+            "environment": ENVIRONMENT,
+        },
+        "security": {
+            "cors_locked": IS_PRODUCTION,
+            "rate_limiting": "active",
+            "input_validation": "active",
+            "security_headers": "active",
         },
         "timestamp": int(time.time())
     }
 
 @app.get("/")
 def root():
-    return {"status": "Sentimental V3 is operational.", "moats": "Triple Verification, SEIR Projection active"}
+    return {
+        "status": "SentiFlow V5 is operational.",
+        "version": "5.0.0",
+        "moats": [
+            "Silent Consensus Protocol™",
+            "SEIR-10M Epidemiological Projection",
+            "Adversarial Swarm Debate",
+            "Triple Verification Engine"
+        ]
+    }
 
 if __name__ == "__main__":
     import uvicorn

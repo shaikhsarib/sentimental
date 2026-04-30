@@ -2,11 +2,18 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import { Activity, ShieldAlert, CheckCircle2, AlertCircle, BarChart3, Users, Zap } from 'lucide-react'
 import PopulationChart from './PopulationChart'
+import ConsensusRefused from './ConsensusRefused'
 
 export default function DebriefReport({ runResult }) {
   if (!runResult) return null
 
   const shield = runResult.mode === 'shield' ? runResult : runResult.shield
+  
+  // ─── SILENT CONSENSUS PROTOCOL CHECK ───
+  if (shield?.consensus?.should_refuse) {
+    return <ConsensusRefused consensus={shield.consensus} />
+  }
+
   const evaluation = shield?.evaluation || {}
   const cascade = shield?.graph_cascade || {}
   

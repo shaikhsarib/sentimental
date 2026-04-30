@@ -11,7 +11,8 @@ from engines.crisis_database import CrisisDatabase
 from engines.graph_simulation import GraphSimulation
 from engines.macro_simulation import MacroSimulationEngine
 from engines.metacognition_engine import MetacognitionEngine
-from engines.multi_model import run_all_personas, run_individual_persona, PERSONA_MODEL_ROUTING, run_synthesized_persona
+from engines.multi_model import run_all_personas, run_individual_persona, run_synthesized_persona, taxonomy
+from engines.consensus_engine import ConsensusEngine
 
 
 class SimulationRunner:
@@ -21,6 +22,7 @@ class SimulationRunner:
         self.graph_sim = GraphSimulation(population=10000000)
         self.macro_sim = MacroSimulationEngine()
         self.meta_engine = MetacognitionEngine()
+        self.consensus_engine = ConsensusEngine()
 
     async def run_shield(self, content: str, content_type: str = "general", industry: str = "general", objective: str = "General behavioral scan", on_persona_result=None, custom_personas=None, calibration_overrides=None, lessons: List[Dict] = None) -> Dict:
         """Step 4: Execute grounded swarm simulation."""
@@ -40,7 +42,7 @@ class SimulationRunner:
                 tasks.append(run_synthesized_persona(p, content, content_type, objective, lessons=persona_lessons))
         else:
             tasks = []
-            for pid in PERSONA_MODEL_ROUTING.keys():
+            for pid in taxonomy.personas.keys():
                 persona_lessons = [L["lesson"] for L in lessons if L["persona_id"] == pid] if lessons else None
                 tasks.append(run_individual_persona(pid, content, content_type, objective, lessons=persona_lessons))
         
@@ -95,7 +97,9 @@ class SimulationRunner:
             industry=industry,
         )
 
-        graph_timeline = self.graph_sim.simulate_cascade(max_virality)
+        # Extract emotions from agent reactions for sentiment-modulated SEIR
+        detected_emotions = [r.get("emotion", "neutral") for r in personas_reactions if r.get("emotion")]
+        graph_timeline = self.graph_sim.simulate_cascade(max_virality, emotions=detected_emotions)
 
         # PART 5: Agentic Metacognition (Evaluation)
         evaluation = self.meta_engine.evaluate_swarm_performance(
@@ -104,6 +108,9 @@ class SimulationRunner:
             historical_grounding=historical_risk
         )
 
+        # PART 4: Silent Consensus Protocol (SCP)
+        consensus = self.consensus_engine.evaluate_consensus(personas_reactions)
+
         processing_ms = int((time.time() - start_time) * 1000)
 
         return {
@@ -111,7 +118,8 @@ class SimulationRunner:
             "mode": "shield",
             "processing_ms": processing_ms,
             "risk_level": verification["final_risk_level"],
-            "confidence": verification["agreement_score"] / 10,
+            "confidence": consensus["agreement_score"],
+            "consensus": consensus,
             "verification": {
                 "agreement_score": verification["agreement_score"],
                 "method_results": verification["method_results"],
@@ -192,7 +200,9 @@ Return JSON:
                 except: continue
             else:
                 personas.append(res)
-                
+        
+        return personas
+
     async def chat_with_persona(self, persona: Dict, mission_context: str, user_message: str) -> Dict:
         """Step 5: Interactive debriefing with a synthesized agent."""
         from engines.multi_model import call_llm_with_settings
@@ -214,6 +224,10 @@ Return JSON:
   "response": "...",
   "mood": "..."
 }}"""
+        result = await call_llm_with_settings(prompt, "llama-3.3-70b-versatile", 0.7)
+        result["persona_id"] = persona.get("persona_id", persona['name'])
+        return result
+
     async def generate_strategic_summary(self, project_name: str, objective: str, reactions: List[Dict]) -> Dict:
         """Step 5 Synthesis: Turn raw swarm data into strategic intelligence."""
         from engines.multi_model import call_llm_with_settings
