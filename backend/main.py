@@ -11,6 +11,7 @@ import re
 import hashlib
 import secrets
 from collections import defaultdict
+from dataclasses import asdict
 from dotenv import load_dotenv
 
 from engines.crisis_database import CrisisDatabase
@@ -23,16 +24,37 @@ from services.simulation_runner import SimulationRunner
 from sse_starlette.sse import EventSourceResponse
 import asyncio
 
+# V6 Engines
+from engines.document_processor import DocumentProcessor
+from engines.entity_extractor import EntityExtractor
+from engines.domain_analyzer import DomainAnalyzer
+from engines.agent_factory import AgentFactory
+from engines.sentimental_db import SentiDatabase
+from engines.swarm_shard_manager import SwarmShardManager
+from engines.million_debate_engine import MillionDebateEngine
+from engines.query_engine import QueryEngine
+from services.export_service import ExportService
+
 load_dotenv()
+
+# Initialize V6 Foundations
+v6_db = SentiDatabase("data/sentimental_v6.db")
+v6_processor = DocumentProcessor()
+v6_extractor = EntityExtractor()
+v6_analyzer = DomainAnalyzer()
+v6_shard_manager = SwarmShardManager(batch_size=50, max_workers=10)
+v6_debate_engine = MillionDebateEngine(v6_shard_manager)
+v6_query_engine = QueryEngine()
+v6_export_service = ExportService()
 
 # ─── ENVIRONMENT ───
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 IS_PRODUCTION = ENVIRONMENT == "production"
 
 app = FastAPI(
-    title="SentiFlow V5 API",
-    version="5.0.0",
-    docs_url=None if IS_PRODUCTION else "/docs",     # Disable docs in production
+    title="SentiFlow V6 Million-Agent API",
+    version="6.0.0",
+    docs_url=None if IS_PRODUCTION else "/docs",
     redoc_url=None if IS_PRODUCTION else "/redoc",
 )
 
@@ -52,6 +74,8 @@ else:
     ALLOWED_ORIGINS = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
         "http://localhost:3000",
     ]
 
@@ -622,6 +646,110 @@ def health_check():
         },
         "timestamp": int(time.time())
     }
+
+# ─── V6 API ENDPOINTS (Phase 5) ───
+
+@app.post("/api/v6/projects")
+async def v6_create_project(request: Dict):
+    name = request.get("name", "New V6 Project")
+    description = request.get("description", "")
+    project_id = v6_db.create_project(name, description)
+    return {"project_id": project_id}
+
+@app.get("/api/v6/projects")
+async def v6_list_projects():
+    return v6_db.list_projects()
+
+@app.post("/api/v6/upload")
+async def v6_upload(project_id: str, file: UploadFile = File(...)):
+    content = await file.read()
+    filename = file.filename
+    
+    # 1. Process Text
+    text = v6_processor.extract_text(content, filename)
+    doc_id = v6_db.add_document(project_id, filename, text, filename.split(".")[-1])
+    
+    # 2. Analyze Domain & Entities
+    domain_data = await v6_analyzer.analyze(text)
+    entities = await v6_extractor.extract(text[:8000], high_fidelity=True)
+    
+    # Update project with domain
+    v6_db._get_connection().execute(
+        "UPDATE projects SET domain = ? WHERE project_id = ?", 
+        (domain_data.get("domain"), project_id)
+    ).close()
+
+    return {
+        "doc_id": doc_id,
+        "domain": domain_data,
+        "entities": [asdict(e) for e in entities[:50]] # Limit for preview
+    }
+
+@app.post("/api/v6/projects/{project_id}/debate")
+async def v6_run_debate(project_id: str, request: Dict):
+    intent = request.get("intent", "")
+    target_count = request.get("target_count", 1000)
+    
+    # 1. Fetch document and entities
+    project = v6_db.get_project(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+        
+    # Get latest document
+    with v6_db._get_connection() as conn:
+        doc = conn.execute("SELECT * FROM documents WHERE project_id = ? ORDER BY doc_id DESC LIMIT 1", (project_id,)).fetchone()
+    
+    if not doc:
+        raise HTTPException(status_code=400, detail="No document found in project")
+
+    # 2. Extract Entities & Generate Swarm
+    entities = await v6_extractor.extract(doc["content"][:10000], high_fidelity=True)
+    factory = AgentFactory(domain=project.get("domain", "GENERAL"))
+    swarm = factory.generate_swarm(entities, target_count=target_count)
+    
+    # Save swarm for explorer
+    v6_db.save_agent_swarm(swarm)
+    
+    # 3. Run Million-Agent Debate
+    results = await v6_debate_engine.run_million_debate(
+        agents=swarm,
+        content=doc["content"][:5000],
+        content_type=doc["content_type"],
+        intent=intent
+    )
+    
+    return results
+
+@app.post("/api/v6/projects/{project_id}/query")
+async def v6_query_swarm(project_id: str, request: Dict):
+    query = request.get("query", "")
+    perspective = request.get("perspective", "businessman")
+    debate_data = request.get("debate_data")
+    
+    if not debate_data:
+        raise HTTPException(status_code=400, detail="Debate data is required for synthesis.")
+        
+    result = await v6_query_engine.query_swarm(query, perspective, debate_data)
+    return result
+
+@app.post("/api/v6/projects/{project_id}/export")
+async def v6_export_brief(project_id: str, request: Dict):
+    debate_data = request.get("debate_data")
+    queries = request.get("queries", {}) # Dictionary of {perspective: result}
+    
+    if not debate_data:
+        raise HTTPException(status_code=400, detail="Debate data is required for export.")
+        
+    filename = v6_export_service.generate_strategic_brief(project_id, debate_data, queries)
+    return {"filename": filename, "download_url": f"/api/exports/{filename}"}
+
+from fastapi.responses import FileResponse
+@app.get("/api/exports/{filename}")
+async def download_export(filename: str):
+    path = os.path.join("storage/exports", filename)
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(path, filename=filename)
 
 @app.get("/")
 def root():

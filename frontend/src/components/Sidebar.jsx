@@ -64,6 +64,20 @@ export default function Sidebar() {
       </div>
 
       <div className="sidebar-content scroll-thin">
+        {/* V6 Institutional Section */}
+        <section className="sidebar-section">
+          <div className="section-header text-blue-400">V6 INSTITUTIONAL</div>
+          <div className="nav-list">
+             <a 
+               href="/v6/upload"
+               className="nav-item no-underline"
+               style={{ color: 'inherit', textDecoration: 'none' }}
+             >
+                <LayoutGrid size={14} className="text-blue-500" /> Million-Agent Swarm
+             </a>
+          </div>
+        </section>
+
         {/* Navigation Section */}
         <section className="sidebar-section">
           <div className="section-header">WORKSPACE</div>

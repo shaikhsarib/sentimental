@@ -1,87 +1,92 @@
-# SentiFlow V5: Industrial Intelligence Terminal 🛡️🛰️
+# SentiFlow V6: Institutional Intelligence Terminal 🛡️🛰️
+### The World's First Million-Agent Narrative Contagion Platform
 
-**SentiFlow** is a high-fidelity narrative simulation and strategic intelligence platform designed for industrial-grade risk assessment. Built with an **Adversarial Swarm Architecture**, it allows intelligence analysts to quantify risk using the **Narrative R0 Index** and run population-scale projections across **10,000,000 nodes.**
+**SentiFlow V6** is a high-fidelity narrative simulation and strategic intelligence platform designed for institutional-grade risk assessment. It marks a fundamental leap from persona-based analysis to **Massive-Scale Synthetic Population Simulation.**
 
----
-
-## 🏛️ The "Trust Moat": Silent Consensus Protocol (SCP)
-
-Unlike generic AI tools that hallucinate a prediction for every prompt, SentiFlow implements the **Silent Consensus Protocol**. 
-
-If the internal agent swarm (Experts vs. Population) fails to reach a validated confidence threshold (0.78 agreement), the system **refuses to predict**. Instead, it outputs a **Strategic Stalemate Report**, identifying specific "Intelligence Gaps" that must be filled to achieve certainty. This "Refusal-as-a-Feature" is what makes SentiFlow industrial-grade.
+> [!IMPORTANT]
+> **V6 UPGRADE COMPLETE.** The platform now supports document-grounded entity extraction, million-agent swarm generation, and multi-perspective strategic synthesis.
 
 ---
 
-## 🛠️ Tactical Technical Stack
+## 🏛️ V6 Institutional Architecture
 
-*   **Intelligence Core**: Python 3.14 (FastAPI) + **70B Expert Routing**.
-*   **Consensus Engine**: SCP-validated variance detection and bimodal clustering.
-*   **Epidemiological Moat**: **SEIR-Kinetics** model for 10M-node population projection.
-*   **Semantic Memory**: ChromaDB (Vector Search) + **Moat Fuel** (20+ Seeded Historical Crises).
-*   **Infrastructure**: Dockerized, Rate-Limited, and Security-Sanitized.
+### 1. Million-Agent Swarm Factory
+Every noun phrase in an uploaded document (PDF/TXT/MD) becomes an agent candidate. 
+- **Entity DNA Extraction**: NER + pattern matching identifies real-world entities.
+- **Synthetic Multiplier**: 100 entities → 1,000,000+ agents with unique skills and training.
 
----
+### 2. Hierarchical Consensus Protocol (HCP)
+V6 replaces simple voting with a three-layer weighted protocol (Blueprint Page 17):
+- **Mass Layer (0.2)**: Statistical aggregation of 1M+ agent analyses.
+- **Representative Layer (0.3)**: 100-500 stratified agents reason in detail.
+- **Arbiter Layer (0.5)**: A 70B "Synthesis Judge" performs final adversarial arbitration.
 
-## 📂 Repository Architecture (V5 Update)
+### 3. Emotion Physics & SEIR-Kinetics
+Narrative contagion is now governed by physical properties (Blueprint Page 32):
+- **Anger**: 1.8x infection rate, 0.6x recovery (spreads fast, lingers).
+- **Fear**: 1.4x infection rate, 1.1x recovery (spikes fast, fades fast).
+- **Sadness**: 0.8x infection rate (slow spread).
 
-### 🛡️ Backend: Tactical Intelligence Engine (`/backend`)
-
-#### 🧠 V5 Engines (`/backend/engines/`)
-*   **`consensus_engine.py`**: [NEW] Implements the Silent Consensus Protocol.
-*   **`taxonomy.yaml`**: [NEW] Dynamic tiered agent configuration (Experts/Population/Validators).
-*   **`crisis_database.py`**: Grounding engine with 20+ historical crisis "Memories".
-*   **`graph_simulation.py`**: Upgraded SEIR model with sentiment-modulated kinetics.
-*   **`multi_model.py`**: 70B Expert routing logic via Groq Llama-3.3.
-
-#### 🧪 Validation Suite (`/backend/`)
-*   **`validate_accuracy.py`**: [NEW] Automated benchmark harness to prove prediction accuracy.
-*   **`seed_moat.py`**: [NEW] Bulk-seeder for historical data injection.
-
-### 🛰️ Frontend: Industrial Workspace Terminal (`/frontend`)
-
-#### 🧩 V5 Components (`/frontend/src/components/`)
-*   **`ConsensusRefused.jsx`**: [NEW] "War Room" UI for handling high-uncertainty states.
-*   **`PopulationChart.jsx`**: [UPGRADED] Real-time SEIR kinetics visualization.
-*   **`DebriefReport.jsx`**: Integrated SCP verdict tracking and risk scorecard.
+### 4. Perspective Synthesis Gateway
+Post-simulation, stakeholders can query the collective swarm through 6 specialized lenses:
+- **Businessman** (ROI/Moat) // **Investor** (TAM/Exit) // **Engineer** (Scale/Feasibility)
+- **Policy Maker** (Regulation) // **Student** (Accessibility) // **Academic** (Rigor)
 
 ---
 
-## 🚀 Quick Start (V5 Runtime)
+## 🛠️ Technical Implementation (V6)
 
-### 1. Initialize the Moat (One-time)
-```powershell
-cd backend
-python seed_moat.py
-```
+### 🧠 Core Engines (`/backend/engines/`)
+- **`agent_factory.py`**: [NEW] High-scale synthetic persona generator.
+- **`v6_graph_builder.py`**: [NEW] Constructs influence networks based on agent hierarchy.
+- **`cascade_simulator.py`**: [NEW] Runs the Emotion Physics SEIR model on agent graphs.
+- **`query_engine.py`**: [NEW] Multi-perspective strategic synthesis engine.
+- **`sentimental_db.py`**: [NEW] SQLite V6 Schema with WAL mode for concurrency.
 
-### 2. Start the Terminal
-**Terminal A (Backend):**
+### 📂 Repository Architecture
+
+#### Backend: Tactical Intelligence Engine (`/backend`)
+*   **`main.py`**: Upgraded with V6 Institutional endpoints.
+*   **`services/export_service.py`**: [NEW] Generates Institutional Strategic Briefs (PDF).
+
+#### Frontend: Industrial Workspace Terminal (`/frontend`)
+*   **`pages/V6Upload.jsx`**: Document-to-Entity extraction dashboard.
+*   **`pages/V6Debate.jsx`**: Operation Room for Hierarchical Consensus visualization.
+*   **`pages/V6Query.jsx`**: Perspective-aware Swarm Intelligence Gateway.
+
+---
+
+## 🚀 Quick Start (V6 Institutional)
+
+### 1. Initialize the Environment
+Ensure your `.env` contains a valid `GROQ_API_KEY`.
+
+### 2. Launch the Platform
+**Backend:**
 ```powershell
 cd backend
 python main.py
 ```
 
-**Terminal B (Frontend):**
+**Frontend:**
 ```powershell
 cd frontend
 npm run dev
 ```
 
-### 3. Run Validation
-To generate your first Strategic Accuracy Report:
+### 3. Run V6 Verification
+To verify the million-agent factory and emotion physics:
 ```powershell
-cd backend
-python validate_accuracy.py
+python backend/test_v6_graph_cascade.py
 ```
 
 ---
 
 ## 🛡️ Security Posture
-SentiFlow V5 includes production-grade defenses:
-- **Rate Limiting**: RPM/Burst management to prevent API abuse.
-- **Input Sanitization**: Mandatory truncation and null-byte removal for all ingestion.
-- **Request Size Capping**: Rejection of oversized payloads to prevent resource exhaustion.
-- **CORS Lockdown**: Strict origin white-listing for enterprise environments.
+SentiFlow V6 maintains production-grade defenses:
+- **Rate Limiting**: RPM/Burst management via `llm_semaphore`.
+- **Input Sanitization**: Mandatory truncation and sanitization for all ingestion.
+- **CORS Lockdown**: Strict origin white-listing (ports 5173/5174).
 
 ---
 

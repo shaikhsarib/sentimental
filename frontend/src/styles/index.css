@@ -474,3 +474,81 @@ input, textarea { cursor: text; }
   background: rgba(255, 255, 255, 0.05);
   color: white;
 }
+
+/* ─── SENTIFLOW V6: INDUSTRIAL PRINT ENGINE ─── */
+@media print {
+  /* Hide UI elements */
+  .workspace-sidebar,
+  .workbench-tabs,
+  .mission-path,
+  .print-hide,
+  .tactical-overlay,
+  .sidebar-toggle-closed,
+  nav,
+  aside:not(.workspace-workbench) {
+    display: none !important;
+  }
+
+  /* Reset layout for paper */
+  body, .workspace-shell, main {
+    background: white !important;
+    color: black !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .workspace-canvas {
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  
+  .workspace-workbench {
+    width: 100% !important;
+    border: none !important;
+    display: block !important;
+  }
+
+  /* Intelligence Report Optimization */
+  .glass-panel {
+    background: white !important;
+    border: 2px solid #000 !important;
+    box-shadow: none !important;
+    color: black !important;
+    break-inside: avoid;
+    margin-bottom: 20px !important;
+  }
+
+  .debrief-report-v6 {
+    padding: 40px !important;
+  }
+
+  h2, h3 {
+    color: black !important;
+  }
+
+  .mono-text, .text-muted {
+    color: #666 !important;
+  }
+
+  /* V6 Institutional Seal */
+  .debrief-report-v6::before {
+    content: "SENTIFLOW V6 // CONFIDENTIAL STRATEGIC BRIEFING // CLASSIFIED: INTERNAL";
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    border-bottom: 2px solid #000;
+    margin-bottom: 40px;
+    padding-bottom: 10px;
+    letter-spacing: 2px;
+  }
+
+  /* Chart optimization */
+  canvas {
+    max-width: 100% !important;
+    height: auto !important;
+    filter: grayscale(1) !important;
+  }
+}

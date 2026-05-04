@@ -5,6 +5,9 @@ import json
 import yaml
 from typing import List, Dict, Optional
 from tenacity import retry, stop_after_attempt, wait_exponential
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # ─── TAXONOMY LOADER ───
 TAXONOMY_PATH = os.path.join(os.path.dirname(__file__), "taxonomy.yaml")
@@ -48,16 +51,21 @@ class TaxonomyManager:
 # Initialize global manager
 taxonomy = TaxonomyManager(TAXONOMY_PATH)
 
+# Global semaphore for rate limiting
+MAX_CONCURRENT_LLM_CALLS = 3
+llm_semaphore = asyncio.Semaphore(MAX_CONCURRENT_LLM_CALLS)
+
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=10)
 )
 async def call_llm_with_settings(prompt: str, model: str, temperature: float) -> dict:
-    """Make the API call to Groq for speed."""
-    local_model = os.getenv("LOCAL_MODEL")
-    use_local = os.getenv("USE_LOCAL_MODEL", "").lower() in ("1", "true", "yes")
-    if use_local and local_model:
-        return await call_ollama(prompt, local_model, temperature)
+    """Make the API call to Groq with global rate limiting."""
+    async with llm_semaphore:
+        local_model = os.getenv("LOCAL_MODEL")
+        use_local = os.getenv("USE_LOCAL_MODEL", "").lower() in ("1", "true", "yes")
+        if use_local and local_model:
+            return await call_ollama(prompt, local_model, temperature)
 
     key = os.getenv("GROQ_API_KEY")
     if not key or "your-key" in key:
@@ -215,3 +223,53 @@ async def run_all_personas(content: str, content_type: str, objective: str = "")
     results = await asyncio.gather(*tasks, return_exceptions=True)
     valid_results = [r for r in results if isinstance(r, dict) and r.get("triggered", False)]
     return valid_results
+
+async def run_synthesis_judge(content: str, debate_transcript: str, historical_context: str) -> dict:
+    """
+    SentiFlow V6 Round 3: The Synthesis Judge.
+    A high-reasoning (70B) model that acts as the final institutional arbiter.
+    """
+    prompt = f"""
+SYSTEM: You are the SentiFlow Synthesis Judge (Institutional Arbiter). Your role is to analyze a swarm debate between multiple expert and population agents regarding a specific piece of content.
+
+MISSION CONTEXT:
+{content}
+
+HISTORICAL GROUNDING:
+{historical_context}
+
+SWARM DEBATE TRANSCRIPT:
+{debate_transcript}
+
+YOUR TASK:
+1. Identify the 'Dissonance Points' where agents fundamentally disagreed.
+2. Evaluate which agents were more 'Grounded' in the historical evidence provided.
+3. Calculate the official NARRATIVE R0 INDEX (1.0 to 10.0) based on the contagion potential.
+4. Issue a final, binding CONSOLIDATED VERDICT.
+5. Identify any remaining 'Intelligence Gaps' that the swarm could not resolve.
+
+Respond in strictly valid JSON:
+{{
+    "narrative_r0": 0.0,
+    "consolidated_verdict": "string",
+    "chain_of_thought": "detailed step-by-step reasoning",
+    "dissonance_points": ["string"],
+    "evidence_winner": "persona_id",
+    "intelligence_gaps": ["string"],
+    "confidence_in_verdict": 0.0
+}}
+"""
+    try:
+        # Synthesis Judge ALWAYS uses 70B for maximum reasoning depth
+        from engines.multi_model import call_llm_with_settings
+        response = await call_llm_with_settings(prompt, "llama-3.3-70b-versatile", 0.3)
+        if isinstance(response, str):
+            # Attempt to parse JSON if string returned
+            import json, re
+            match = re.search(r'\{.*\}', response, re.DOTALL)
+            if match:
+                return json.loads(match.group(0))
+        return response
+    except Exception as e:
+        print(f"[JUDGE ERROR] {e}")
+        return {"narrative_r0": 5.0, "consolidated_verdict": "Error in judge synthesis."}

@@ -11,7 +11,7 @@ from engines.crisis_database import CrisisDatabase
 from engines.graph_simulation import GraphSimulation
 from engines.macro_simulation import MacroSimulationEngine
 from engines.metacognition_engine import MetacognitionEngine
-from engines.multi_model import run_all_personas, run_individual_persona, run_synthesized_persona, taxonomy
+from engines.multi_model import run_all_personas, run_individual_persona, run_synthesized_persona, taxonomy, run_synthesis_judge
 from engines.consensus_engine import ConsensusEngine
 
 
@@ -111,6 +111,28 @@ class SimulationRunner:
         # PART 4: Silent Consensus Protocol (SCP)
         consensus = self.consensus_engine.evaluate_consensus(personas_reactions)
 
+        # PART 5: SentiFlow V6 Round 3 — The Synthesis Judge
+        debate_transcript = "\n".join([f"AGENT {r.get('persona_id')}: {r.get('reaction')} (RISK: {r.get('virality_risk')})" for r in personas_reactions])
+        historical_context = self.crisis_db.get_crisis_context_for_prompt(content, industry)
+        
+        judge_verdict = await run_synthesis_judge(
+            content=content,
+            debate_transcript=debate_transcript,
+            historical_context=historical_context
+        )
+
+        # Update consensus with official Narrative R0 Index
+        consensus["official_r0"] = judge_verdict.get("narrative_r0", 5.0)
+        consensus["judge_verdict"] = judge_verdict.get("consolidated_verdict")
+        consensus["dissonance_points"] = judge_verdict.get("dissonance_points", [])
+
+        # PART 6: Agentic Metacognition (Evaluation)
+        evaluation = self.meta_engine.evaluate_swarm_performance(
+            reactions=personas_reactions,
+            final_verdict=verification["final_risk_level"],
+            historical_grounding=historical_risk
+        )
+
         processing_ms = int((time.time() - start_time) * 1000)
 
         return {
@@ -120,6 +142,7 @@ class SimulationRunner:
             "risk_level": verification["final_risk_level"],
             "confidence": consensus["agreement_score"],
             "consensus": consensus,
+            "judge_verdict": judge_verdict,
             "verification": {
                 "agreement_score": verification["agreement_score"],
                 "method_results": verification["method_results"],
