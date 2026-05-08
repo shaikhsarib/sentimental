@@ -43,7 +43,7 @@ class QueryEngine:
             }
         }
 
-    async def query_swarm(self, query: str, perspective: str, debate_results: Dict) -> Dict:
+    async def query_swarm(self, query: str, perspective: str, debate_results: Dict, context: str = "") -> Dict:
         """
         Queries the million-agent swarm from a specific lens.
         """
@@ -62,6 +62,8 @@ class QueryEngine:
         ])
 
         # 2. Build Perspective-Aware Prompt
+        rag_block = f"\nGRAPH RAG CONTEXT:\n{context}\n" if context else ""
+
         prompt = f"""
 SYSTEM: You are the SentiFlow V6 Query Engine, acting from the perspective of a {perspective.upper()}.
 Your focus areas are: {", ".join(p_config['focus'])}.
@@ -75,6 +77,8 @@ Key Swarm Voices:
 
 USER QUERY:
 {query}
+
+{rag_block}
 
 YOUR TASK:
 Synthesize an answer to the query based strictly on the swarm's debate and the consolidated verdict. 

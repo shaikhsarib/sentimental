@@ -52,12 +52,12 @@ class TaxonomyManager:
 taxonomy = TaxonomyManager(TAXONOMY_PATH)
 
 # Global semaphore for rate limiting
-MAX_CONCURRENT_LLM_CALLS = 3
+MAX_CONCURRENT_LLM_CALLS = 1 # Ultra-conservative for standard API tiers
 llm_semaphore = asyncio.Semaphore(MAX_CONCURRENT_LLM_CALLS)
 
 @retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=10)
+    stop=stop_after_attempt(7), # More retries
+    wait=wait_exponential(multiplier=3, min=5, max=60) # Much longer wait for 429 recovery
 )
 async def call_llm_with_settings(prompt: str, model: str, temperature: float) -> dict:
     """Make the API call to Groq with global rate limiting."""
@@ -201,8 +201,12 @@ Respond with strictly valid JSON:
 If the content is irrelevant to your role, set triggered to false.
 """
     result = await call_llm_with_settings(prompt, model, temp)
-    result["persona_id"] = persona.get("persona_id", persona['name'])
-    result["persona_name"] = persona['name']
+    # Forward all metadata from the persona to the result
+    for key in ["persona_id", "persona_name", "archetype_id", "variance_factor"]:
+        if key in persona:
+            result[key] = persona[key]
+    if "persona_name" not in result:
+        result["persona_name"] = persona.get("name", "Unknown Agent")
     return result
 
 async def run_grounded_swarm(custom_personas: list, content: str, content_type: str, objective: str = "") -> list:

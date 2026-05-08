@@ -215,3 +215,69 @@ class SentiDatabase:
         with self._get_connection() as conn:
             rows = conn.execute("SELECT * FROM projects ORDER BY created_at DESC").fetchall()
             return [dict(r) for r in rows]
+
+    def get_agents(self, limit: int = 100, offset: int = 0) -> List[Dict]:
+        """Fetch agents for the explorer."""
+        with self._get_connection() as conn:
+            rows = conn.execute("SELECT * FROM agent_profiles ORDER BY created_at DESC LIMIT ? OFFSET ?", (limit, offset)).fetchall()
+            return [dict(r) for r in rows]
+
+    def get_agent_details(self, agent_id: str) -> Optional[Dict]:
+        """Fetch full agent profile including skills and training."""
+        with self._get_connection() as conn:
+            profile = conn.execute("SELECT * FROM agent_profiles WHERE agent_id = ?", (agent_id,)).fetchone()
+            if not profile: return None
+            
+            agent = dict(profile)
+            agent["skills"] = [dict(r) for r in conn.execute("SELECT * FROM agent_skills WHERE agent_id = ?", (agent_id,)).fetchall()]
+            agent["training"] = [dict(r) for r in conn.execute("SELECT * FROM training_examples WHERE agent_id = ?", (agent_id,)).fetchall()]
+            
+            # Try to parse JSON strings back to objects
+            for skill in agent["skills"]:
+                if skill.get("activation_triggers"):
+                    try:
+                        skill["activation_triggers"] = json.loads(skill["activation_triggers"])
+                    except:
+                        pass
+            return agent
+
+    def search_documents(self, query: str, limit: int = 5) -> List[Dict]:
+        if not query:
+            return []
+
+        def make_snippet(content: str, q: str) -> str:
+            lower = content.lower()
+            idx = lower.find(q.lower())
+            if idx == -1:
+                return content[:240].strip()
+            start = max(0, idx - 120)
+            end = min(len(content), idx + 120)
+            return content[start:end].strip()
+
+        with self._get_connection() as conn:
+            try:
+                rows = conn.execute(
+                    "SELECT title, content, bm25(content_fts) AS score FROM content_fts WHERE content_fts MATCH ? ORDER BY score LIMIT ?",
+                    (query, limit)
+                ).fetchall()
+                return [
+                    {
+                        "title": r[0],
+                        "snippet": make_snippet(r[1], query),
+                        "score": r[2]
+                    }
+                    for r in rows
+                ]
+            except sqlite3.OperationalError:
+                rows = conn.execute(
+                    "SELECT title, content FROM documents WHERE content LIKE ? LIMIT ?",
+                    (f"%{query}%", limit)
+                ).fetchall()
+                return [
+                    {
+                        "title": r[0],
+                        "snippet": make_snippet(r[1], query),
+                        "score": None
+                    }
+                    for r in rows
+                ]

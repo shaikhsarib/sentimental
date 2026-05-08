@@ -142,6 +142,11 @@ export default function Dashboard() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '11px' }}>
           <Activity size={14} /> SWARM_READY
         </div>
+        <div 
+          onClick={() => window.location.href='/v6/explorer'}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary)', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}>
+          <Terminal size={14} /> BROWSE_AGENT_POPULATION
+        </div>
       </div>
     </div>
   )

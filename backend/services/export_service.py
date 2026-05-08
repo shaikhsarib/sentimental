@@ -94,3 +94,41 @@ class ExportService:
         
         pdf.output(filepath)
         return filename
+
+    def generate_report_markdown(self, project_id: str, debate_results: Dict, queries: Dict = None) -> str:
+        verdict = debate_results.get("judge_verdict", {}).get("consolidated_verdict", "No verdict available.")
+        consensus = debate_results.get("consensus", {})
+        cascade = debate_results.get("cascade", {}).get("metadata", {})
+        lines = []
+        lines.append(f"# SentiFlow V6 Strategic Report\n")
+        lines.append(f"Project ID: {project_id}\n")
+        lines.append("## Executive Arbitration Verdict\n")
+        lines.append(verdict or "No verdict available.")
+        lines.append("\n## Contagion Summary\n")
+        lines.append(f"- Narrative R0: {cascade.get('r_naught', 'N/A')}")
+        lines.append(f"- Peak Infection: {cascade.get('peak_infection', 'N/A')}")
+        lines.append(f"- Total Affected: {cascade.get('total_affected', 'N/A')}")
+        lines.append("\n## Consensus Confidence\n")
+        lines.append(f"- Final Confidence: {consensus.get('final_confidence', 'N/A')}")
+        scores = consensus.get("layer_scores", {})
+        lines.append(f"- Mass: {scores.get('mass', 'N/A')}")
+        lines.append(f"- Representative: {scores.get('representative', 'N/A')}")
+        lines.append(f"- Judge: {scores.get('judge', 'N/A')}")
+
+        if queries:
+            lines.append("\n## Multi-Perspective Insights\n")
+            for name, data in queries.items():
+                lines.append(f"### {name.upper()}\n")
+                lines.append(data.get("synthesis", "No synthesis available."))
+                insights = data.get("strategic_insights", [])
+                risks = data.get("critical_risks", [])
+                if insights:
+                    lines.append("\n**Strategic Insights**")
+                    lines.extend([f"- {item}" for item in insights])
+                if risks:
+                    lines.append("\n**Critical Risks**")
+                    lines.extend([f"- {item}" for item in risks])
+                lines.append("\n")
+
+        lines.append(f"\nReport generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        return "\n".join(lines)

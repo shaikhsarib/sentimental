@@ -42,6 +42,9 @@ Post-simulation, stakeholders can query the collective swarm through 6 specializ
 - **`cascade_simulator.py`**: [NEW] Runs the Emotion Physics SEIR model on agent graphs.
 - **`query_engine.py`**: [NEW] Multi-perspective strategic synthesis engine.
 - **`sentimental_db.py`**: [NEW] SQLite V6 Schema with WAL mode for concurrency.
+- **`adversarial_engine.py`**: [V6.1] Generates 'Poison Agents' to stress-test consensus.
+- **`ablation_engine.py`**: [V6.1] Performs scientific sensitivity analysis on HCP weights.
+- **`security_engine.py`**: [V6.1] Detects prompt injections and malicious overrides.
 
 ### 📂 Repository Architecture
 

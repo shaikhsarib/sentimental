@@ -24,58 +24,84 @@ class AgentFactory:
     """
     SentiFlow V6 Agent Factory.
     Generates 100K-10M agents from real entities and synthetic templates.
+    Uses 'Archetype DNA' to ensure scalability via statistical abstraction.
     """
     
     def __init__(self, domain: str = "GENERAL"):
         self.domain = domain
         self.skill_engine = SkillEngine()
+        self.archetypes = {} # archetype_id -> agent_dna
 
-    def generate_swarm(self, entities: List[ExtractedEntity], target_count: int = 1000) -> List[Dict]:
+    def generate_swarm(self, entities: List[ExtractedEntity], target_count: int = 1000, max_archetypes: int = 100) -> List[Dict]:
         """
         Million-Agent Generation Pipeline (Blueprint Page 5).
+        Uses Statistical Abstraction (Phase 1 Fix).
         """
-        swarm = []
+        # 1. Generate core Archetypes
+        archetype_count = min(max_archetypes, target_count)
+        self.archetypes = self._generate_archetypes(entities, archetype_count)
         
-        # 1. Base agents from real entities (x5 emotion variants)
+        # 2. Instantiate full swarm as lightweight clones
+        swarm = []
+        archetype_ids = list(self.archetypes.keys())
+        
+        for i in range(target_count):
+            arch_id = archetype_ids[i % len(archetype_ids)]
+            base_dna = self.archetypes[arch_id]
+            
+            # Clone with unique ID but shared archetype reference
+            agent = base_dna.copy()
+            agent["agent_id"] = str(uuid.uuid4())
+            agent["archetype_id"] = arch_id
+            # Add slight 'noise' to synthetic agents for statistical variance
+            if agent["is_synthetic"]:
+                agent["variance_factor"] = random.uniform(0.9, 1.1)
+            
+            swarm.append(agent)
+                
+        return swarm
+
+    def _generate_archetypes(self, entities: List[ExtractedEntity], count: int) -> Dict[str, Dict]:
+        """Create a diverse pool of Archetype DNA."""
+        archetypes = {}
+        
+        # 1. Entity-based archetypes
         for entity in entities:
             for emotion in ["aggressive", "cautious", "optimistic", "pessimistic", "neutral"]:
-                swarm.append(self._create_agent(
+                arch_id = f"arch_ent_{entity.id}_{emotion}"
+                archetypes[arch_id] = self._create_agent_dna(
                     name=f"{entity.name} ({emotion})",
                     role=entity.type,
                     tier=1 if entity.type in ["ROLE", "ORGANIZATION"] else 2,
                     emotion=emotion,
                     is_synthetic=False,
                     source_id=entity.id
-                ))
+                )
         
-        # 2. Fill with synthetic agents if target not met
-        remaining = target_count - len(swarm)
-        if remaining > 0:
-            for _ in range(remaining):
-                role_base = random.choice(["User", "Expert", "Observer", "Critic", "Stakeholder"])
-                template = random.choice(ROLE_TEMPLATES)
-                role_name = template.format(role=role_base, domain=self.domain)
-                
-                swarm.append(self._create_agent(
-                    name=f"Agent_{uuid.uuid4().hex[:6]}",
-                    role=role_name,
-                    tier=random.randint(2, 3),
-                    emotion=random.choice(["aggressive", "cautious", "optimistic", "pessimistic", "neutral"]),
-                    is_synthetic=True
-                ))
-                
-        return swarm
+        # 2. Synthetic archetypes to fill the pool
+        while len(archetypes) < count:
+            role_base = random.choice(["User", "Expert", "Observer", "Critic", "Stakeholder"])
+            template = random.choice(ROLE_TEMPLATES)
+            role_name = template.format(role=role_base, domain=self.domain)
+            emotion = random.choice(["aggressive", "cautious", "optimistic", "pessimistic", "neutral"])
+            arch_id = f"arch_syn_{uuid.uuid4().hex[:6]}"
+            
+            archetypes[arch_id] = self._create_agent_dna(
+                name=f"Archetype_{arch_id[-4:]}",
+                role=role_name,
+                tier=random.randint(2, 3),
+                emotion=emotion,
+                is_synthetic=True
+            )
+            
+        return archetypes
 
-    def _create_agent(self, name: str, role: str, tier: int, emotion: str, is_synthetic: bool, source_id: str = None) -> Dict:
-        """Create a single agent profile with skills and training."""
-        agent_id = str(uuid.uuid4())
-        
-        # Phase 2: Add Skills & Training
+    def _create_agent_dna(self, name: str, role: str, tier: int, emotion: str, is_synthetic: bool, source_id: str = None) -> Dict:
+        """Create a core DNA profile."""
         skills = self.skill_engine.generate_skills(self.domain)
         training = self.skill_engine.generate_training(self.domain, emotion)
         
         return {
-            "agent_id": agent_id,
             "name": name,
             "role": role,
             "domain": self.domain,
@@ -87,5 +113,5 @@ class AgentFactory:
             "skills": skills,
             "training": training,
             "accuracy_score": 0.0,
-            "created_at": None 
+            "variance_factor": 1.0
         }

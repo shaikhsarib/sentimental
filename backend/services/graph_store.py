@@ -83,28 +83,61 @@ class GraphStore:
         self._write_json(self._graph_path(project_id), graph)
         if not self.driver:
             return
+            
         nodes = graph.get("nodes", [])
-        edges = graph.get("edges", [])
+        edges = graph.get("links") or graph.get("edges") or []
+        
         with self.driver.session() as session:
-            # Scope to project_id to avoid wiping entire DB
-            session.run("MATCH (n:Term {project_id: $pid}) DETACH DELETE n", pid=project_id)
+            # Clear project nodes to ensure consistency
+            session.run("MATCH (n {project_id: $pid}) DETACH DELETE n", pid=project_id)
+            
+            # Store Nodes with dynamic labels based on Type (Zep-style)
             for node in nodes:
+                label = node.get("type", "Term") # Default to Term for backward compat
                 session.run(
-                    "MERGE (n:Term {id: $id, project_id: $pid}) SET n.label = $label, n.weight = $weight",
+                    f"MERGE (n:{label} {{id: $id, project_id: $pid}}) "
+                    "SET n.label = $name, n.weight = $weight, n.importance = $importance",
                     id=node["id"],
                     pid=project_id,
-                    label=node.get("label", node["id"]),
+                    name=node.get("label", node.get("name", node["id"])),
                     weight=node.get("weight", 1),
+                    importance=node.get("importance", 0.5)
                 )
+                
+            # Store Edges with dynamic relationship types (Neo4j-style)
             for edge in edges:
+                rel_type = edge.get("type", "RELATES_TO")
                 session.run(
-                    "MATCH (a:Term {id: $source, project_id: $pid}), (b:Term {id: $target, project_id: $pid}) "
-                    "MERGE (a)-[r:RELATES_TO]->(b) SET r.weight = $weight",
+                    f"MATCH (a {{id: $source, project_id: $pid}}), (b {{id: $target, project_id: $pid}}) "
+                    f"MERGE (a)-[r:{rel_type}]->(b) "
+                    "SET r.weight = $weight",
                     source=edge["source"],
                     target=edge["target"],
                     pid=project_id,
-                    weight=edge.get("weight", 1),
+                    weight=edge.get("weight", 1)
                 )
+
+    def get_influence_path(self, project_id: str, start_id: str, depth: int = 3) -> List[Dict]:
+        """
+        Advanced Neo4j Cypher query to find the ripple effect of an agent's sentiment.
+        """
+        if not self.driver:
+            return []
+            
+        query = (
+            f"MATCH p = (a {{id: $start, project_id: $pid}})-[*1..{depth}]->(b) "
+            "RETURN nodes(p) as nodes, relationships(p) as rels"
+        )
+        
+        with self.driver.session() as session:
+            result = session.run(query, start=start_id, pid=project_id)
+            paths = []
+            for record in result:
+                paths.append({
+                    "nodes": [dict(n) for n in record["nodes"]],
+                    "rels": [dict(r) for r in record["rels"]]
+                })
+            return paths
 
     def get_graph(self, project_id: str) -> Dict:
         graph = self._read_json(self._graph_path(project_id))
@@ -196,6 +229,65 @@ class GraphStore:
     def get_graph_metrics(self, project_id: str) -> Dict:
         graph = self.get_graph(project_id)
         return self.compute_metrics(graph)
+
+    def search_graph(self, project_id: str, query: str, limit: int = 10) -> Dict:
+        graph = self.get_graph(project_id)
+        if not query:
+            return {"nodes": [], "edges": [], "facts": []}
+
+        q = query.lower().strip()
+        nodes = graph.get("nodes", [])
+        edges = graph.get("edges", [])
+        node_hits = [
+            n for n in nodes
+            if q in str(n.get("id", "")).lower() or q in str(n.get("label", "")).lower()
+        ]
+
+        hit_ids = {n.get("id") for n in node_hits}
+        edge_hits = [
+            e for e in edges
+            if e.get("source") in hit_ids or e.get("target") in hit_ids
+        ]
+
+        facts = []
+        for edge in edge_hits[:limit]:
+            facts.append(f"{edge.get('source')} -> {edge.get('target')} ({edge.get('weight', 1)})")
+
+        return {
+            "nodes": node_hits[:limit],
+            "edges": edge_hits[:limit],
+            "facts": facts,
+        }
+
+    def get_graph_insights(self, project_id: str, query: Optional[str] = None) -> Dict:
+        graph = self.get_graph(project_id)
+        metrics = self.compute_metrics(graph)
+        edges = graph.get("edges", [])
+
+        relationship_chains = []
+        for edge in edges[:20]:
+            relationship_chains.append(
+                f"{edge.get('source')} -> {edge.get('target')}"
+            )
+
+        search = self.search_graph(project_id, query, limit=10) if query else None
+
+        return {
+            "metrics": metrics,
+            "top_nodes": metrics.get("top_nodes", []),
+            "top_bridges": metrics.get("top_bridges", []),
+            "relationship_chains": relationship_chains,
+            "search": search,
+        }
+
+    def get_memory_nodes(self, project_id: str, limit: int = 20) -> List[Dict]:
+        graph = self.get_graph(project_id)
+        memories = [
+            node for node in graph.get("nodes", [])
+            if node.get("type") == "MEMORY"
+        ]
+        memories.sort(key=lambda n: n.get("importance", 0), reverse=True)
+        return memories[:limit]
 
     async def generate_ontology(self, text: str) -> Dict:
         """Step 1: Extract Entity/Relation types from seeds."""

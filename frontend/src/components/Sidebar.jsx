@@ -69,7 +69,7 @@ export default function Sidebar() {
           <div className="section-header text-blue-400">V6 INSTITUTIONAL</div>
           <div className="nav-list">
              <a 
-               href="/v6/upload"
+               href="/v6/start"
                className="nav-item no-underline"
                style={{ color: 'inherit', textDecoration: 'none' }}
              >

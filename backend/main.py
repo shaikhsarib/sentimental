@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, HTTPException, BackgroundTasks, UploadFile, File, Depends
+from fastapi import FastAPI, Request, HTTPException, BackgroundTasks, UploadFile, File, Depends, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel, validator
@@ -33,19 +33,11 @@ from engines.sentimental_db import SentiDatabase
 from engines.swarm_shard_manager import SwarmShardManager
 from engines.million_debate_engine import MillionDebateEngine
 from engines.query_engine import QueryEngine
+from engines.graph_rag_engine import GraphRAGEngine
+from engines.report_agent import ReportAgent
 from services.export_service import ExportService
 
 load_dotenv()
-
-# Initialize V6 Foundations
-v6_db = SentiDatabase("data/sentimental_v6.db")
-v6_processor = DocumentProcessor()
-v6_extractor = EntityExtractor()
-v6_analyzer = DomainAnalyzer()
-v6_shard_manager = SwarmShardManager(batch_size=50, max_workers=10)
-v6_debate_engine = MillionDebateEngine(v6_shard_manager)
-v6_query_engine = QueryEngine()
-v6_export_service = ExportService()
 
 # ─── ENVIRONMENT ───
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
@@ -220,6 +212,18 @@ graph_store = GraphStore(
 )
 run_store = RunStore(storage_path)
 consensus_engine = ConsensusEngine()
+
+# Initialize V6 Foundations
+v6_db = SentiDatabase("data/sentimental_v6.db")
+v6_processor = DocumentProcessor()
+v6_extractor = EntityExtractor()
+v6_analyzer = DomainAnalyzer()
+v6_shard_manager = SwarmShardManager(batch_size=50, max_workers=10)
+v6_debate_engine = MillionDebateEngine(v6_shard_manager, graph_store)
+v6_query_engine = QueryEngine()
+v6_export_service = ExportService()
+v6_graph_rag_engine = GraphRAGEngine(graph_store, v6_db)
+v6_report_agent = ReportAgent(v6_graph_rag_engine, v6_export_service)
 
 # Event streams for SSE
 run_event_queues: Dict[str, asyncio.Queue] = {}
@@ -685,8 +689,75 @@ async def v6_upload(project_id: str, file: UploadFile = File(...)):
         "entities": [asdict(e) for e in entities[:50]] # Limit for preview
     }
 
+@app.post("/api/v6/simple-run")
+async def v6_simple_run(
+    file: UploadFile = File(...),
+    question: str = Form(...),
+    project_name: str = Form("New V6 Project"),
+    perspective: str = Form("businessman"),
+    intent: str = Form(""),
+    target_count: int = Form(1000),
+):
+    question = sanitize_text_input(question, max_length=2000)
+    if not question:
+        raise HTTPException(status_code=400, detail="Question is required")
+
+    project_name = sanitize_text_input(project_name, max_length=200) or "New V6 Project"
+    intent = sanitize_text_input(intent, max_length=1000)
+
+    content = await file.read()
+    if len(content) > MAX_REQUEST_BODY_BYTES:
+        raise HTTPException(status_code=413, detail="File too large")
+
+    filename = file.filename or "upload"
+    text = v6_processor.extract_text(content, filename)
+
+    project_id = v6_db.create_project(project_name, "")
+    doc_id = v6_db.add_document(project_id, filename, text, filename.split(".")[-1])
+
+    domain_data = await v6_analyzer.analyze(text)
+    entities = await v6_extractor.extract(text[:8000], high_fidelity=True)
+
+    v6_db._get_connection().execute(
+        "UPDATE projects SET domain = ? WHERE project_id = ?",
+        (domain_data.get("domain"), project_id)
+    ).close()
+
+    factory = AgentFactory(domain=domain_data.get("domain", "GENERAL"))
+    swarm = factory.generate_swarm(entities, target_count=target_count)
+    v6_db.save_agent_swarm(swarm)
+
+    results = await v6_debate_engine.run_million_debate(
+        project_id=project_id,
+        agents=swarm,
+        content=text[:5000],
+        content_type=filename.split(".")[-1],
+        intent=intent
+    )
+
+    if results.get("graph"):
+        graph_store.store_graph(project_id, results["graph"])
+
+    rag_context = v6_graph_rag_engine.build_context(project_id, question)
+    rag_summary = await v6_graph_rag_engine.synthesize(question, rag_context)
+    rag_text = v6_graph_rag_engine.format_context(rag_context)
+    query_result = await v6_query_engine.query_swarm(question, perspective, results, context=rag_text)
+
+    return {
+        "project_id": project_id,
+        "doc_id": doc_id,
+        "domain": domain_data,
+        "entities": [asdict(e) for e in entities[:50]],
+        "debate": results,
+        "query": query_result,
+        "rag": {"context": rag_context, "summary": rag_summary},
+        "question": question,
+        "perspective": perspective,
+    }
+
 @app.post("/api/v6/projects/{project_id}/debate")
-async def v6_run_debate(project_id: str, request: Dict):
+async def v6_run_debate(project_id: str, request: Dict = None):
+    request = request or {}
     intent = request.get("intent", "")
     target_count = request.get("target_count", 1000)
     
@@ -712,13 +783,120 @@ async def v6_run_debate(project_id: str, request: Dict):
     
     # 3. Run Million-Agent Debate
     results = await v6_debate_engine.run_million_debate(
+        project_id=project_id,
         agents=swarm,
         content=doc["content"][:5000],
         content_type=doc["content_type"],
         intent=intent
     )
+
+    if results.get("graph"):
+        graph_store.store_graph(project_id, results["graph"])
     
     return results
+
+@app.get("/api/v6/projects/{project_id}/graph")
+async def v6_get_graph(project_id: str):
+    return graph_store.get_graph(project_id)
+
+@app.get("/api/v6/projects/{project_id}/graph/insights")
+async def v6_graph_insights(project_id: str, query: str = ""):
+    query = sanitize_text_input(query, max_length=200)
+    return graph_store.get_graph_insights(project_id, query=query or None)
+
+@app.get("/api/v6/projects/{project_id}/rag")
+async def v6_graph_rag(project_id: str, query: str = ""):
+    query = sanitize_text_input(query, max_length=2000)
+    context = v6_graph_rag_engine.build_context(project_id, query)
+    summary = await v6_graph_rag_engine.synthesize(query, context)
+    return {"context": context, "summary": summary}
+
+@app.get("/api/v6/projects/{project_id}/agents")
+async def v6_list_agents(project_id: str, limit: int = 50, offset: int = 0):
+    del project_id
+    return v6_db.get_agents(limit=limit, offset=offset)
+
+@app.get("/api/v6/projects/{project_id}/agents/{agent_id}")
+async def v6_get_agent(project_id: str, agent_id: str):
+    del project_id
+    agent = v6_db.get_agent_details(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return agent
+
+@app.post("/api/v6/projects/{project_id}/agents/{agent_id}/interview")
+async def v6_interview_agent(project_id: str, agent_id: str, request: Dict):
+    question = sanitize_text_input(request.get("question", ""), max_length=2000)
+    intent = sanitize_text_input(request.get("intent", ""), max_length=1000)
+    if not question:
+        raise HTTPException(status_code=400, detail="Question is required")
+
+    agent = v6_db.get_agent_details(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    prompt = f"""You are simulating a synthetic agent interview.
+Agent: {agent.get('name')} ({agent.get('role')})
+Domain: {agent.get('domain')}
+Emotion Profile: {agent.get('emotion_profile')}
+Intent Context: {intent}
+
+Question: {question}
+
+Answer in 3-6 sentences, grounded in the agent persona."""
+
+    response = await call_llm_with_settings(prompt, "llama-3.1-8b-instant", 0.6)
+    return {
+        "agent_id": agent_id,
+        "question": question,
+        "response": response if isinstance(response, str) else json.dumps(response)
+    }
+
+@app.get("/api/v6/projects/{project_id}/agents/{agent_id}/memories")
+async def v6_agent_memories(project_id: str, agent_id: str):
+    graph = graph_store.get_graph(project_id)
+    memory_ids = [
+        edge.get("target")
+        for edge in graph.get("edges", [])
+        if edge.get("source") == agent_id and edge.get("type") == "REMEMBERS"
+    ]
+    memories = [
+        node for node in graph.get("nodes", [])
+        if node.get("id") in memory_ids
+    ]
+    return {"memories": memories}
+
+@app.post("/api/v6/projects/{project_id}/agents/{agent_id}/chat")
+async def v6_agent_chat(project_id: str, agent_id: str, request: Dict):
+    messages = request.get("messages", [])
+    intent = sanitize_text_input(request.get("intent", ""), max_length=1000)
+    if not messages:
+        raise HTTPException(status_code=400, detail="Messages are required")
+
+    agent = v6_db.get_agent_details(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    memory_context = await v6_debate_engine.memory_engine.get_agent_context(project_id, agent_id)
+    history = "\n".join([f"{m.get('role')}: {m.get('content')}" for m in messages[-8:]])
+
+    prompt = f"""You are continuing a live chat with a simulated agent.
+Agent: {agent.get('name')} ({agent.get('role')})
+Domain: {agent.get('domain')}
+Emotion Profile: {agent.get('emotion_profile')}
+Intent Context: {intent}
+Memory Context: {memory_context}
+
+Conversation:
+{history}
+
+Respond as the agent in 2-4 sentences."""
+
+    response = await call_llm_with_settings(prompt, "llama-3.1-8b-instant", 0.6)
+    response_text = response if isinstance(response, str) else json.dumps(response)
+    await v6_debate_engine.memory_engine.extract_and_store_memories(project_id, agent_id, response_text)
+
+    return {"agent_id": agent_id, "response": response_text}
 
 @app.post("/api/v6/projects/{project_id}/query")
 async def v6_query_swarm(project_id: str, request: Dict):
@@ -729,7 +907,9 @@ async def v6_query_swarm(project_id: str, request: Dict):
     if not debate_data:
         raise HTTPException(status_code=400, detail="Debate data is required for synthesis.")
         
-    result = await v6_query_engine.query_swarm(query, perspective, debate_data)
+    rag_context = v6_graph_rag_engine.build_context(project_id, query)
+    rag_text = v6_graph_rag_engine.format_context(rag_context)
+    result = await v6_query_engine.query_swarm(query, perspective, debate_data, context=rag_text)
     return result
 
 @app.post("/api/v6/projects/{project_id}/export")
@@ -742,6 +922,15 @@ async def v6_export_brief(project_id: str, request: Dict):
         
     filename = v6_export_service.generate_strategic_brief(project_id, debate_data, queries)
     return {"filename": filename, "download_url": f"/api/exports/{filename}"}
+
+@app.post("/api/v6/projects/{project_id}/report")
+async def v6_generate_report(project_id: str, request: Dict):
+    debate_data = request.get("debate_data")
+    queries = request.get("queries", {})
+    if not debate_data:
+        raise HTTPException(status_code=400, detail="Debate data is required for report.")
+    report = await v6_report_agent.generate_report(project_id, debate_data, queries)
+    return report
 
 from fastapi.responses import FileResponse
 @app.get("/api/exports/{filename}")

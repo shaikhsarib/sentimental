@@ -14,3 +14,8 @@ pyyaml
 pytest
 pytest-asyncio
 pytest-mock
+pypdf
+fpdf
+pandas
+scikit-learn
+matplotlib

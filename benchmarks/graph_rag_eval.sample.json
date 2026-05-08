@@ -1,0 +1,10 @@
+[
+  {
+    "query": "What are the highest risk entities and relationships?",
+    "expected_keywords": ["risk", "entity", "relationship"]
+  },
+  {
+    "query": "Summarize key memories and evidence from the graph.",
+    "expected_keywords": ["memory", "evidence", "graph"]
+  }
+]
