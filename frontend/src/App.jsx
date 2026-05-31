@@ -6,8 +6,10 @@ import V6Beginner from './pages/V6Beginner'
 import V6Debate from './pages/V6Debate'
 import V6Query from './pages/V6Query'
 import AgentExplorer from './pages/AgentExplorer'
+import V6Workbench from './pages/V6Workbench'
 import FlowHub from './pages/FlowHub'
 import useStore from './store/useStore'
+
 
 export default function App() {
   const { project, _hasHydrated } = useStore()
@@ -31,6 +33,7 @@ export default function App() {
         <Route path="/v6/start" element={<V6Beginner />} />
         <Route path="/v6/upload" element={<V6Upload />} />
         <Route path="/v6/debate/:projectId" element={<V6Debate />} />
+        <Route path="/v6/workbench/:projectId" element={<V6Workbench />} />
         <Route path="/v6/query/:projectId" element={<V6Query />} />
         <Route path="/v6/explorer" element={<AgentExplorer />} />
       </Routes>

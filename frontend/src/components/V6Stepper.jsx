@@ -8,6 +8,7 @@ export default function V6Stepper({ activeStep, projectId }) {
 
   const steps = useMemo(() => ([
     { key: 'upload', label: 'Upload', hint: 'Add a document', path: '/v6/upload' },
+    { key: 'workbench', label: 'Swarm', hint: 'Taxonomy & workspace', path: projectId ? `/v6/workbench/${projectId}` : null },
     { key: 'debate', label: 'Run', hint: 'Generate analysis', path: projectId ? `/v6/debate/${projectId}` : null },
     { key: 'query', label: 'Results', hint: 'Ask and review', path: projectId ? `/v6/query/${projectId}` : null }
   ]), [projectId])

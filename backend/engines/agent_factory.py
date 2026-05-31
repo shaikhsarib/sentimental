@@ -31,6 +31,8 @@ class AgentFactory:
         self.domain = domain
         self.skill_engine = SkillEngine()
         self.archetypes = {} # archetype_id -> agent_dna
+        from engines.agent_infrastructure import AgentInfrastructure
+        self.infra = AgentInfrastructure()
 
     def generate_swarm(self, entities: List[ExtractedEntity], target_count: int = 1000, max_archetypes: int = 100) -> List[Dict]:
         """
@@ -58,6 +60,10 @@ class AgentFactory:
                 agent["variance_factor"] = random.uniform(0.9, 1.1)
             
             swarm.append(agent)
+            
+            # Provision dynamic workspace directories (limit to first 250 to keep simulation fast)
+            if i < 250:
+                self.infra.provision_agent_workspace(agent["agent_id"], agent)
                 
         return swarm
 

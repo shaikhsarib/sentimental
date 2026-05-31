@@ -43,6 +43,34 @@ class TaxonomyManager:
                     "temperature": pconfig.get("temperature", tier_temp),
                     "persona_id": pid
                 }
+        
+        # Flatten domain hierarchies
+        domains = self.data.get("domains", {})
+        for domain_id, dconfig in domains.items():
+            hierarchy = dconfig.get("hierarchy", {})
+            for role_id, rconfig in hierarchy.items():
+                if "subroles" in rconfig:
+                    for subrole_id, sub_config in rconfig["subroles"].items():
+                        full_id = f"{domain_id}_{role_id}_{subrole_id}"
+                        flat[full_id] = {
+                            **sub_config,
+                            "domain": domain_id,
+                            "role_category": role_id,
+                            "tier": "experts" if role_id in ["ceo", "cto", "co_founder"] else "population",
+                            "model": "llama-3.3-70b-versatile" if role_id in ["ceo", "cto", "co_founder"] else "llama-3.1-8b-instant",
+                            "temperature": 0.4 if role_id in ["ceo", "cto", "co_founder"] else 0.7,
+                            "persona_id": full_id
+                        }
+                else:
+                    full_id = f"{domain_id}_{role_id}"
+                    flat[full_id] = {
+                        **rconfig,
+                        "domain": domain_id,
+                        "tier": "experts" if role_id in ["ceo", "cto", "co_founder"] else "population",
+                        "model": "llama-3.3-70b-versatile" if role_id in ["ceo", "cto", "co_founder"] else "llama-3.1-8b-instant",
+                        "temperature": 0.4 if role_id in ["ceo", "cto", "co_founder"] else 0.7,
+                        "persona_id": full_id
+                    }
         return flat
 
     def get_persona(self, persona_id: str) -> Optional[dict]:

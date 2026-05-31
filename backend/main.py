@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request, HTTPException, BackgroundTasks, UploadFile, File, Depends, Form
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel, validator
@@ -36,6 +37,9 @@ from engines.query_engine import QueryEngine
 from engines.graph_rag_engine import GraphRAGEngine
 from engines.report_agent import ReportAgent
 from services.export_service import ExportService
+from services.agent_updater import AgentUpdater
+from engines.self_training_engine import SelfTrainingEngine
+
 
 load_dotenv()
 
@@ -49,6 +53,17 @@ app = FastAPI(
     docs_url=None if IS_PRODUCTION else "/docs",
     redoc_url=None if IS_PRODUCTION else "/redoc",
 )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = []
+    for error in exc.errors():
+        errors.append(f"{error['loc'][-1]}: {error['msg']}")
+    detail_str = "; ".join(errors)
+    return JSONResponse(
+        status_code=400,
+        content={"detail": detail_str}
+    )
 
 # ─── SECURITY: CORS ───
 # In production, only allow explicit origins. In dev, allow localhost.
@@ -224,6 +239,9 @@ v6_query_engine = QueryEngine()
 v6_export_service = ExportService()
 v6_graph_rag_engine = GraphRAGEngine(graph_store, v6_db)
 v6_report_agent = ReportAgent(v6_graph_rag_engine, v6_export_service)
+v6_updater = AgentUpdater()
+v6_self_trainer = SelfTrainingEngine()
+
 
 # Event streams for SSE
 run_event_queues: Dict[str, asyncio.Queue] = {}
@@ -272,6 +290,8 @@ class AddDocumentRequest(BaseModel):
 
     @validator('content')
     def validate_content(cls, v):
+        if len(v) > MAX_CONTENT_CHARS:
+            raise ValueError(f'Content too long. Max {MAX_CONTENT_CHARS} chars.')
         v = sanitize_text_input(v)
         if not v:
             raise ValueError('Document content cannot be empty')
@@ -851,6 +871,21 @@ Answer in 3-6 sentences, grounded in the agent persona."""
         "question": question,
         "response": response if isinstance(response, str) else json.dumps(response)
     }
+
+@app.post("/api/v6/projects/{project_id}/agents/{agent_id}/learn")
+async def v6_agent_learn(project_id: str, agent_id: str):
+    """Trigger continuous learning and ingestion of new training documents for the agent."""
+    learnings = await v6_updater.ingest_new_training_files(agent_id)
+    return {"status": "success", "learnings": learnings}
+
+@app.post("/api/v6/projects/{project_id}/agents/{agent_id}/calibrate")
+async def v6_agent_calibrate(project_id: str, agent_id: str, request: Dict):
+    """Trigger self-reflection and prompt calibration loop based on recent debate results."""
+    debate_transcript = request.get("debate_transcript", "Swarm debated risk metrics.")
+    final_outcome = request.get("final_outcome", "Adjudicated high virality risk.")
+    result = await v6_self_trainer.execute_agent_self_reflection(agent_id, debate_transcript, final_outcome)
+    return result
+
 
 @app.get("/api/v6/projects/{project_id}/agents/{agent_id}/memories")
 async def v6_agent_memories(project_id: str, agent_id: str):

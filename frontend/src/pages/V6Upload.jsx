@@ -152,10 +152,10 @@ export default function V6Upload() {
                   </div>
 
                   <button 
-                    onClick={() => navigate(`/v6/debate/${projectId}`)}
+                    onClick={() => navigate(`/v6/workbench/${projectId}`)}
                     className="w-full mt-8 bg-gradient-to-r from-emerald-600 to-blue-600 p-4 rounded-xl font-bold hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-blue-500/20"
                   >
-                    NEXT: RUN ANALYSIS
+                    NEXT: SWARM WORKBENCH
                   </button>
                 </div>
               )}
